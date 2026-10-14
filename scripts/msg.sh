@@ -32,7 +32,7 @@ fetch_lazy() {
   date +%s > "$stamp"
   (fetch >/dev/null 2>&1 &)
 }
-lines() { git show "$ref:CHAT.md" 2>/dev/null | grep '^- '; }
+lines() { git show "$ref:CHAT.md" 2>/dev/null | grep '^- ' || true; }
 # one snapshot per run: a background fetch between reading and marking must not swallow a message
 load_unread() {
   local seen; seen=$(git config dt.chatSeen 2>/dev/null || echo 0)
@@ -79,7 +79,7 @@ case "${1:-}" in
   inbox) need_me; fetch; load_unread
     if [ -n "$u" ]; then printf '%s\n' "$u" | show; else echo "💬 новых сообщений нет"; fi
     mark_read ;;
-  log) fetch; lines | tail -n "${2:-20}" | sed 's/^- /  /' ;;
+  log) fetch; out=$(lines | tail -n "${2:-20}" | sed 's/^- /  /'); echo "${out:-💬 канал пуст}" ;;
   count) [ -n "$me" ] || { echo 0; exit 0; }; fetch_lazy 45; load_unread; printf '%s' "$u" | grep -c . || true ;;
   hook) [ -n "$me" ] || exit 0; fetch_lazy 30; load_unread
     [ -n "$u" ] && { printf '%s\n' "$u" | show; mark_read; }; exit 0 ;;

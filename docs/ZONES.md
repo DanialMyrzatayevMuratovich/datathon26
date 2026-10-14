@@ -11,5 +11,6 @@
 - Согласованная правка чужого файла: `ZONE_OK=1 scripts/checkpoint.sh "..."`.
 - Пока строк зон нет, проверка выключена. Пример: `ml: app/custom_features.py app/features.py notebooks/ml_ params.toml`.
 
+MEMBER: danial Danial DanialMyrzatayevMuratovich 179967465
 LEAD:
 ALL: docs/PROGRESS.md docs/EXPERIMENTS.md outputs/leaderboard.csv

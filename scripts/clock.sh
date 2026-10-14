@@ -37,20 +37,20 @@ final=$(dt_epoch "$DT_FINAL"); end=$(dt_epoch "$DT_END"); pitch=$(dt_epoch "$DT_
 if [ "$now" -lt $((start - 86400 * 7)) ] || [ "$now" -gt $((pitch + 6 * 3600)) ]; then
   echo "$head$push"
 elif [ "$now" -lt "$start" ]; then
-  echo "$head · до старта (сб 12:00) $(dt_left "$start") — готовим окружение, без кода под задачу$push"
+  echo "$head · до старта ($DT_START) $(dt_left "$start") — готовим окружение, без кода под задачу$push"
 elif [ "$now" -lt "$freeze" ]; then
   hour=$(( (now - start) / 3600 + 1 ))
   stage="итерации"; [ "$now" -lt $((start + 3600)) ] && stage="kickoff и бейзлайн"
   [ "$now" -ge "$mid" ] && stage="после разворота: углубляем выбранное, без новых направлений"
-  echo "$head · час $hour из 24 ($stage) · до фриза моделей (вс 08:00) $(dt_left "$freeze") · до финального push (11:30) $(dt_left "$final")$push"
+  echo "$head · час $hour из 24 ($stage) · до фриза моделей (${DT_FREEZE#* }) $(dt_left "$freeze") · до финального push (${DT_FINAL#* }) $(dt_left "$final")$push"
 elif [ "$now" -lt "$final" ]; then
-  echo "$head · ФРИЗ МОДЕЛЕЙ: только фиксы, финальный сабмит, питч, README · до финального push (11:30) $(dt_left "$final")$push"
+  echo "$head · ФРИЗ МОДЕЛЕЙ: только фиксы, финальный сабмит, питч, README · до финального push (${DT_FINAL#* }) $(dt_left "$final")$push"
 elif [ "$now" -lt "$end" ]; then
-  echo "$head · ФИНАЛ: до 12:00 $(dt_left "$end") — только push и сдача$push"
+  echo "$head · ФИНАЛ: до ${DT_END#* } $(dt_left "$end") — только push и сдача$push"
 elif [ "$now" -lt "$pitch" ]; then
-  echo "$head · код сдан; питч в 13:00 через $(dt_left "$pitch") — репетиция, ответы на вопросы$push"
+  echo "$head · код сдан; питч в ${DT_PITCH#* } через $(dt_left "$pitch") — репетиция, ответы на вопросы$push"
 else
-  echo "$head · питч идёт (13:00–17:00): код не меняем$push"
+  echo "$head · питч идёт: код не меняем$push"
 fi
 [ -n "$chat" ] && echo "$chat"
 exit 0

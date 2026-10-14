@@ -32,7 +32,7 @@
 5. Открыть агента в папке репо (`claude`), убедиться, что видны строка «⏱» и статус-строка, а `/kickoff`, `/autopilot` и другие скиллы есть в списке.
 
 ### Репетиция (желательно, 1–2 часа в четверг или пятницу)
-Сдвиньте расписание на сейчас: создайте `scripts/timeline.local.sh` (в git не идёт) с `DT_START="<сегодня> 20:00"` и т. п. Вставьте в `docs/TASK.md` выдуманное ТЗ («предсказать дефолт клиента по данным data/demo»), скопируйте `data/demo/*.csv` в `data/raw/` и пройдите: `/kickoff` → `/autopilot` ×2 → `/insights` → `/pitch` → `/ship`. После — удалите `timeline.local.sh`, верните шаблоны: `git checkout -- docs task.toml`, очистите `data/raw/`.
+Сдвиньте расписание на сейчас: создайте `scripts/timeline.local.sh` (в git не идёт) и задайте в нём все шесть времён — `DT_START`, `DT_MID`, `DT_FREEZE`, `DT_FINAL`, `DT_END`, `DT_PITCH` (формат `"2026-10-15 20:00"`), например сжатые в 2 часа. Вставьте в `docs/TASK.md` выдуманное ТЗ («предсказать дефолт клиента по данным data/demo»), скопируйте `data/demo/*.csv` в `data/raw/` и пройдите: `/kickoff` → `/autopilot` ×2 → `/insights` → `/pitch` → `/ship`. После — удалите `timeline.local.sh`, верните шаблоны: `git checkout -- docs task.toml`, очистите `data/raw/`.
 
 ### Пятница 19:00 — pre-datathon воркшоп (ауд. 7E.329): питчинг, тайм-менеджмент. Сходить.
 

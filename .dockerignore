@@ -1,0 +1,14 @@
+.venv
+__pycache__
+.pytest_cache
+.ruff_cache
+.env*
+tests
+notebooks
+web
+data/raw
+data/demo
+.git
+**/node_modules
+**/.next
+**/.DS_Store

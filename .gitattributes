@@ -1,0 +1,8 @@
+* text=auto eol=lf
+*.sh text eol=lf
+*.png binary
+*.pdf binary
+# both teammates append to these logs; union keeps all lines instead of conflicting
+docs/PROGRESS.md merge=union
+docs/EXPERIMENTS.md merge=union
+outputs/leaderboard.csv merge=union

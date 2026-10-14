@@ -1,0 +1,24 @@
+# Контракт задачи — заполняет лид на /kickoff, дальше меняет только он (CLI-флаги переопределяют на один прогон).
+# Оба участника считают скор по этому файлу на одних и тех же фолдах — поэтому цифры сравнимы.
+# Пустое значение = автоопределение (target — колонка, которой нет в test; id — уникальная колонка с именем *id*).
+
+[task]
+train = ""                # "data/raw/train.csv" — пусто: первый data/raw/train*
+test = ""                 # "data/raw/test.csv" — пусто: первый data/raw/test*; нет test → только CV
+sample_submission = ""    # формат сабмита организаторов (колонки и порядок строк)
+target = ""
+id = ""
+task = "auto"             # auto | binary | multiclass | regression
+metric = "auto"           # как в ТЗ: roc_auc gini pr_auc logloss f1 accuracy f1_macro f1_weighted roc_auc_ovr rmse mae r2 mape rmsle
+cv = "auto"               # auto | kfold | stratified | group | time
+folds = 5
+group = ""                # клиент с несколькими строками → один клиент не попадает и в train, и в valid
+time = ""                 # колонка даты → обучаемся на прошлом, проверяем на будущем
+drop = []                 # утечки, служебные поля: ["status_after_event", "row_number"]
+predict_proba = true      # binary: сабмит вероятностями (false → 0/1 по threshold)
+threshold = 0.5
+models = []               # пусто = вся лестница: dummy linear hgb lgbm catboost xgb
+budget_min = 20           # мягкий бюджет времени на лестницу моделей
+sample = 0                # >0 — обучаться на подвыборке строк (быстрые итерации)
+gpu = false               # CatBoost/XGBoost на CUDA (Colab)
+shap = false

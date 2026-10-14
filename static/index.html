@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Datathon'26 · прогоны</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%233b6fd8'/%3E%3Cpath d='M4 11V7M8 11V4M12 11V8' stroke='white' stroke-width='2'/%3E%3C/svg%3E">
+<style>
+  :root { --bg:#fbfbfa; --fg:#1d1d1b; --muted:#6b6b66; --line:#e6e5e0; --accent:#3b6fd8; --warn:#b4610e; --card:#fff; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#141413; --fg:#ecebe6; --muted:#9a9993; --line:#2b2b28; --accent:#7ea3ef; --warn:#e9a05a; --card:#1b1b19; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { max-width:1100px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:26px; margin:0 0 4px; letter-spacing:-.01em; }
+  .lead { color:var(--muted); margin:0 0 28px; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:20px; margin-bottom:32px; }
+  .stat .label { color:var(--muted); font-size:13px; } .stat .value { font-size:30px; font-weight:600; font-variant-numeric:tabular-nums; }
+  table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); font-size:14px; }
+  th { color:var(--muted); font-weight:500; }
+  tbody tr { cursor:pointer; } tbody tr:hover, tbody tr.on { background:color-mix(in srgb, var(--accent) 8%, transparent); }
+  .num { text-align:right; }
+  section { margin-top:36px; }
+  h2 { font-size:18px; margin:0 0 12px; }
+  .steps li { margin:4px 0; } .warn { color:var(--warn); }
+  .figs { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
+  .figs img { width:100%; background:#fff; border:1px solid var(--line); border-radius:8px; }
+  pre { white-space:pre-wrap; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:16px; font-size:13px; max-height:520px; overflow:auto; }
+  .empty { color:var(--muted); }
+  .scroll { overflow-x:auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Datathon'26 · решение команды</h1>
+  <p class="lead">Прогоны агента: метрики, решения на каждом шаге и графики. Данные: <code>outputs/leaderboard.csv</code> и <code>runs/</code>.</p>
+  <div class="stats" id="stats"></div>
+  <div class="scroll"><table>
+    <thead><tr><th>время</th><th>кто</th><th>модель</th><th>метрика</th><th class="num">OOF</th><th class="num">± по фолдам</th><th>заметка</th></tr></thead>
+    <tbody id="runs"><tr><td colspan="7" class="empty">загрузка…</td></tr></tbody>
+  </table></div>
+  <section id="detail" hidden>
+    <h2 id="title"></h2>
+    <ol class="steps" id="steps"></ol>
+    <div class="figs" id="figs"></div>
+    <h2 style="margin-top:24px">Отчёт</h2>
+    <pre id="report"></pre>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = (v) => typeof v === "number" ? v.toFixed(4) : esc(v);
+
+async function load() {
+  const [health, runs] = await Promise.all([fetch("/api/health").then(r => r.json()), fetch("/api/runs").then(r => r.json())]);
+  const best = health.best;
+  $("stats").innerHTML = [
+    ["Прогонов", runs.length],
+    ["Лучший результат", best ? `${best.score.toFixed(4)}` : "—"],
+    ["Метрика", best ? esc(best.metric) : "—"],
+    ["Модель", best ? esc(best.model) : "—"],
+  ].map(([l, v]) => `<div class="stat"><div class="label">${l}</div><div class="value">${v}</div></div>`).join("");
+  if (!runs.length) { $("runs").innerHTML = `<tr><td colspan="7" class="empty">Прогонов ещё нет: uv run python -m app.cli auto</td></tr>`; return; }
+  $("runs").innerHTML = runs.map((r) => `<tr data-id="${esc(r.run_id)}"><td>${esc(r.time)}</td><td>${esc(r.author)}</td><td>${esc(r.used)}</td><td>${esc(r.metric)}</td><td class="num">${fmt(r.oof_score)}</td><td class="num">${fmt(r.cv_std)}</td><td>${esc(r.note)}</td></tr>`).join("");
+  document.querySelectorAll("#runs tr").forEach((tr) => tr.addEventListener("click", () => show(tr.dataset.id, tr)));
+  const first = document.querySelector("#runs tr"); if (first) show(first.dataset.id, first);
+}
+
+async function show(id, row) {
+  document.querySelectorAll("#runs tr").forEach((tr) => tr.classList.toggle("on", tr === row));
+  const r = await fetch(`/api/runs/${encodeURIComponent(id)}`).then((x) => x.json());
+  $("detail").hidden = false;
+  $("title").textContent = `Прогон ${id}`;
+  $("steps").innerHTML = r.steps.map((s) => `<li class="${s.status === "ok" ? "" : "warn"}"><b>${esc(s.tool)}</b>: ${esc(s.summary)}${s.decision ? " → " + esc(s.decision) : ""}${s.reason ? ` <span class="lead">(${esc(s.reason)})</span>` : ""}</li>`).join("");
+  $("figs").innerHTML = r.figures.map((f) => `<img alt="${esc(f)}" src="/api/runs/${encodeURIComponent(id)}/files/${encodeURIComponent(f)}">`).join("");
+  $("report").textContent = r.report;
+}
+load().catch((e) => { $("runs").innerHTML = `<tr><td colspan="7" class="warn">API недоступен: ${esc(e)}</td></tr>`; });
+</script>
+</body>
+</html>

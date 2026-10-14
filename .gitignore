@@ -1,0 +1,49 @@
+# deps / builds
+node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+catboost_info/
+
+# secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.jks
+
+# organizers' data: confidential, never in git (scripts/secret-scan.sh checks it too)
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/README.md
+data/processed/*
+!data/processed/.gitkeep
+data/demo/
+
+# models are local per laptop / Drive; the leaderboard and reports are in git
+models/*
+!models/.gitkeep
+
+# pitch exports are rebuilt from pitch/deck.md
+pitch/*.pptx
+
+# local tooling
+scripts/timeline.local.sh
+.claude/settings.local.json
+.claude/worktrees/
+.playwright-mcp/
+.DS_Store
+*.log

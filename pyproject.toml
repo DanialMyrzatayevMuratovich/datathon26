@@ -1,0 +1,58 @@
+[project]
+name = "datathon26"
+version = "0.1.0"
+description = "DATATHON'26 (NU Data Science Club x ForteBank) — team toolkit and solution"
+requires-python = ">=3.12"
+dependencies = [
+    # data
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "pyarrow>=17",
+    "polars>=1.0",
+    "duckdb>=1.0",
+    "openpyxl>=3.1",
+    # models
+    "scikit-learn>=1.5",
+    "scipy>=1.13",
+    "lightgbm>=4.5",
+    "catboost>=1.2",
+    "xgboost>=2.1",
+    "optuna>=4.0",
+    "shap>=0.46",
+    "statsmodels>=0.14",
+    # plots and notebooks
+    "matplotlib>=3.9",
+    "seaborn>=0.13",
+    "plotly>=5.24",
+    "ipykernel>=6.29",
+    "nbformat>=5.10",
+    # agent, API, LLM
+    "pydantic>=2.8",
+    "python-dotenv>=1.0",
+    "openai>=1.50",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "joblib>=1.4",
+    "tqdm>=4.66",
+    "tabulate>=0.9",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.27",
+    "pytest>=8.3",
+    "ruff>=0.6",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::FutureWarning"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+extend-exclude = ["notebooks", "web"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]

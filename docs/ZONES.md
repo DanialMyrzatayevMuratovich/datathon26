@@ -12,5 +12,6 @@
 - Пока строк зон нет, проверка выключена. Пример: `ml: app/custom_features.py app/features.py notebooks/ml_ params.toml`.
 
 MEMBER: danial Danial DanialMyrzatayevMuratovich 179967465
+MEMBER: asylbek Асылбек Asylbek2006 166900995
 LEAD:
 ALL: docs/PROGRESS.md docs/EXPERIMENTS.md outputs/leaderboard.csv

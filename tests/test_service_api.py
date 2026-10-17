@@ -186,17 +186,20 @@ def test_failed_persistence_does_not_leave_a_queued_job(service, monkeypatch):
 
 
 def test_disk_failure_does_not_kill_worker_and_recovers(service, monkeypatch):
-    client, manager, _ = service(command=worker_command(delay=0.3))
-    job_id = upload(client).json()["job_id"]
-    original = write_json
-    def disk_full(*args, **kwargs):
+    client, manager, _ = service()
+    def disk_full_after_queue(path, record):
+        # Install before submitting: scheduling must not let the worker finish
+        # before fault injection. Persist acceptance, then fail worker writes.
+        if record["details"]["stage"] == "queued":
+            return write_json(path, record)
         raise OSError("Disk full")
-    monkeypatch.setattr("service.jobs.write_json", disk_full)
+    monkeypatch.setattr("service.jobs.write_json", disk_full_after_queue)
+    job_id = upload(client).json()["job_id"]
     assert wait_for_job(client, job_id)["status"] == "failed"
     assert manager.threads[0].is_alive()
     assert client.get("/api/v1/health").status_code == 503
     assert upload(client).status_code == 503
-    monkeypatch.setattr("service.jobs.write_json", original)
+    monkeypatch.setattr("service.jobs.write_json", write_json)
     manager.flush_pending()
     assert client.get("/api/v1/health").status_code == 200
     assert wait_for_job(client, upload(client).json()["job_id"])["status"] == "done"

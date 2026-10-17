@@ -24,6 +24,9 @@ def write_json(path: Path, value: dict) -> None:
 
 
 def main() -> None:
+    # Rule-tuning cache is never evidence of fresh inference in the live API.
+    # It also uses one temp path per video, unsuitable for concurrent jobs.
+    os.environ.pop("DT_CACHE", None)
     # launchd restarts the API after a crash, but our independent process groups
     # must not leave old GPU workers alive. A separate process can also interrupt
     # a native model call that holds the Python GIL.

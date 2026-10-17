@@ -81,16 +81,19 @@ class UiError extends Error {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// fetch с пределом ожидания: зависшая сеть даёт ошибку, а не бесконечный прогресс
-async function fetchTimed(url, opts, ms) {
+// fetch с пределом ожидания на весь ответ, включая тело: read(res) читает его под тем же таймером,
+// поэтому зависшая сеть и после заголовков даёт ошибку, а не бесконечный прогресс
+async function fetchTimed(url, opts, ms, read) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
   try {
-    return await fetch(url, { ...opts, signal: ctrl.signal });
+    const res = await fetch(url, { ...opts, signal: ctrl.signal });
+    return await read(res);
   } finally {
     clearTimeout(timer);
   }
 }
+const readText = async (res) => ({ ok: res.ok, status: res.status, text: await res.text() });
 const clamp01 = (x) => Math.min(1, Math.max(0, Number(x) || 0));
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -187,9 +190,9 @@ async function checkHealth() {
     return;
   }
   try {
-    const res = await fetchTimed(`${API}/health`, { cache: 'no-store' }, HEALTH_TIMEOUT_MS);
-    if (!res.ok) throw new Error(String(res.status));
-    const h = await res.json();
+    const reply = await fetchTimed(`${API}/health`, { cache: 'no-store' }, HEALTH_TIMEOUT_MS, readText);
+    if (!reply.ok) throw new Error(String(reply.status));
+    const h = JSON.parse(reply.text);
     setService('ok', h.engine === 'mock' ? 'Сервис на связи · вместо модели пока заглушка' : 'Сервис на связи');
   } catch {
     setService('down', 'Нет связи с сервисом — проверка не запустится');
@@ -374,11 +377,11 @@ function schedulePoll(delay, run) {
 
 async function pollOnce(run) {
   if (run !== state.runId) return;
-  let res;
+  let reply;
   try {
-    res = await fetchTimed(`${API}/jobs/${encodeURIComponent(state.jobId)}/details`, {
+    reply = await fetchTimed(`${API}/jobs/${encodeURIComponent(state.jobId)}/details`, {
       headers: authHeaders(), cache: 'no-store',
-    }, POLL_TIMEOUT_MS);
+    }, POLL_TIMEOUT_MS, readText);
   } catch {
     if (run !== state.runId) return;
     state.netFails += 1;
@@ -393,13 +396,13 @@ async function pollOnce(run) {
   if (run !== state.runId) return;
   state.netFails = 0;
   if (el.progressNote.textContent.startsWith('Связь')) el.progressNote.textContent = '';
-  if (!res.ok) {
-    fail(httpError(res.status, await res.text(), 'poll'));
+  if (!reply.ok) {
+    fail(httpError(reply.status, reply.text, 'poll'));
     return;
   }
   let details;
   try {
-    details = await res.json();
+    details = JSON.parse(reply.text);
   } catch {
     fail(new UiError('Сервис прислал ответ, который не получилось прочитать. Нажмите «Повторить».', { retry: 'poll' }));
     return;
@@ -580,9 +583,10 @@ function renderPlayer(violations) {
 // страницу перезагрузили — локального файла нет, берём исходник с сервера (с ключом, поэтому через fetch, а не src)
 async function loadServerVideo(jobId, run) {
   try {
-    const res = await fetchTimed(`${API}/jobs/${encodeURIComponent(jobId)}/video`, { headers: authHeaders(), cache: 'no-store' }, VIDEO_TIMEOUT_MS);
-    if (!res.ok) throw new Error(String(res.status));
-    const blob = await res.blob();
+    const blob = await fetchTimed(`${API}/jobs/${encodeURIComponent(jobId)}/video`, { headers: authHeaders(), cache: 'no-store' }, VIDEO_TIMEOUT_MS, (res) => {
+      if (!res.ok) throw new Error(String(res.status));
+      return res.blob();
+    });
     if (run !== state.runId) return;
     if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
     state.objectUrl = URL.createObjectURL(blob);

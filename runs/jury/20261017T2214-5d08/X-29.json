@@ -1,0 +1,72 @@
+{
+  "synthetic": false,
+  "strict": true,
+  "count": 1,
+  "expected_engine": "real",
+  "auth_checks": [
+    {
+      "path": "/api/v1/analyze",
+      "key": "missing",
+      "status": 401,
+      "ok": true
+    },
+    {
+      "path": "/api/v1/analyze",
+      "key": "invalid",
+      "status": 401,
+      "ok": true
+    },
+    {
+      "path": "/api/v1/jobs/unknown",
+      "key": "missing",
+      "status": 401,
+      "ok": true
+    },
+    {
+      "path": "/api/v1/jobs/unknown",
+      "key": "invalid",
+      "status": 401,
+      "ok": true
+    },
+    {
+      "path": "/api/v1/jobs/unknown/details",
+      "key": "missing",
+      "status": 401,
+      "ok": true
+    },
+    {
+      "path": "/api/v1/jobs/unknown/details",
+      "key": "invalid",
+      "status": 401,
+      "ok": true
+    },
+    {
+      "path": "/api/v1/jobs/unknown/video",
+      "key": "missing",
+      "status": 401,
+      "ok": true
+    },
+    {
+      "path": "/api/v1/jobs/unknown/video",
+      "key": "invalid",
+      "status": 401,
+      "ok": true
+    }
+  ],
+  "results": [
+    {
+      "job_id": "223d957721674dc882504e16485fa5ee",
+      "status": "done",
+      "accepted_sec": 0.062,
+      "elapsed_sec": 60.315,
+      "verdict": "no_violation",
+      "violations": 0,
+      "evidence_frames": 0,
+      "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=16+asked=cash:6,eat:2,items_left:6,safe:1,screen:1",
+      "error": null,
+      "events": [],
+      "input_index": 0,
+      "input_name": "Х-29.mov"
+    }
+  ]
+}

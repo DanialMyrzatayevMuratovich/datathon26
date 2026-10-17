@@ -17,6 +17,8 @@ from vision.frames import clipped_box
 ROOT = Path(__file__).resolve().parent.parent
 MODELS_DIR = Path(os.getenv("MODELS_DIR", ROOT.parent / "models"))
 GDINO = MODELS_DIR / "grounding-dino-tiny"
+# DT_GDINO_DEVICE=mps runs it on the Apple GPU (several times faster than CPU); default cpu until validated
+DEVICE = os.getenv("DT_GDINO_DEVICE", "cpu")
 
 # key -> (phrase for the prompt, words that identify the returned label)
 OBJECTS = {
@@ -40,7 +42,8 @@ def _model():
 
     if not GDINO.exists():
         raise FileNotFoundError(f"нет весов {GDINO} — scripts/download_models.sh")
-    return AutoProcessor.from_pretrained(GDINO), AutoModelForZeroShotObjectDetection.from_pretrained(GDINO).eval()
+    model = AutoModelForZeroShotObjectDetection.from_pretrained(GDINO).eval()
+    return AutoProcessor.from_pretrained(GDINO), model.to(DEVICE)
 
 
 def _key_of(label: str, keys: list[str]) -> str | None:
@@ -55,7 +58,7 @@ def detect(im: Image.Image, keys: list[str], threshold: float = 0.3) -> dict[str
     """key -> [(box xyxy, score)] sorted by score."""
     proc, model = _model()
     text = " ".join(OBJECTS[k][0] + "." for k in keys)
-    inputs = proc(images=im, text=text, return_tensors="pt")
+    inputs = proc(images=im, text=text, return_tensors="pt").to(DEVICE)
     with torch.no_grad():
         out = model(**inputs)
     res = proc.post_process_grounded_object_detection(

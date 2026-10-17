@@ -1,0 +1,37 @@
+{
+ "videos": 1,
+ "tp": 1,
+ "fp": 0,
+ "fn": 0,
+ "tn": 0,
+ "recall": 1.0,
+ "precision": 1.0,
+ "accuracy": 1.0,
+ "type_hit": "1/1",
+ "time_hit_2s": "1/1",
+ "max_seconds": 39.16,
+ "per_video": {
+  "X-28": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "t": 7.0,
+      "type_id": "T5",
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": true
+    }
+   ],
+   "pred_types": [
+    [
+     "T5",
+     6.0
+    ]
+   ],
+   "seconds": 39.16
+  }
+ }
+}

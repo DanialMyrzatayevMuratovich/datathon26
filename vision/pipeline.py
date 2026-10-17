@@ -65,7 +65,9 @@ def _mock(path: str | Path, progress: Progress | None) -> VideoAnalysis:
 
 
 def analyze(path: str | Path, progress: Progress | None = None) -> VideoAnalysis:
-    engine = os.getenv("VISION_ENGINE", "mock")
-    if engine == "real":
-        raise NotImplementedError("real engine is in progress (danial) — use VISION_ENGINE=mock")
+    """VISION_ENGINE=real -> detection + rules + local VLM (vision.engine); mock -> fixed demo result."""
+    if os.getenv("VISION_ENGINE", "mock") == "real":
+        from vision import engine
+
+        return engine.run(path, progress)
     return _mock(path, progress)

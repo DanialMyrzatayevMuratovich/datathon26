@@ -8,6 +8,8 @@ from pathlib import Path
 
 from PIL import Image
 
+from vision.limits import FFMPEG_THREADS
+
 
 @dataclass(frozen=True)
 class VideoInfo:
@@ -42,8 +44,8 @@ def sample(path: str | Path, fps: float = 2.0, max_side: int | None = None) -> l
     vf = f"fps={fps}"
     if max_side:
         vf += f",scale='if(gt(iw,ih),min({max_side},iw),-2)':'if(gt(iw,ih),-2,min({max_side},ih))'"
-    r = subprocess.run(["ffmpeg", "-v", "error", "-i", str(path), "-vf", vf, "-f", "image2pipe", "-c:v", "png",
-                        "pipe:1"], capture_output=True, check=True)
+    r = subprocess.run(["ffmpeg", "-v", "error", "-threads", FFMPEG_THREADS, "-i", str(path), "-vf", vf,
+                        "-f", "image2pipe", "-c:v", "png", "pipe:1"], capture_output=True, check=True)
     data, out, start = r.stdout, [], 0
     sig = b"\x89PNG\r\n\x1a\n"
     while True:  # split the PNG stream at signatures

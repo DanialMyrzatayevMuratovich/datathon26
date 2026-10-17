@@ -1,10 +1,11 @@
 """Э1 (docs/ML_SPEC.md §10): does the local VLM see the details on crops found by Grounding DINO?
 
 Ground truth comes from the manual review (docs/VIDEO_REVIEW_NOTES.md, contrast pairs in docs/ANALYSIS_RULES.txt).
-Phase `crops`: detect the object, crop, save + a review sheet. Phase `ask`: yes/no questions to each VLM, accuracy and
-latency -> runs/e1/<model>.json. Usage:
+Phase `crops`: detect the object, crop, save + a review sheet.
+Phase `ask`: yes/no questions to each VLM, accuracy and latency -> runs/e1/<model>.json. Usage:
   uv run python -m vision.experiments.e1_vlm_probe crops
-  uv run python -m vision.experiments.e1_vlm_probe ask --models qwen3-vl-4b-instruct-mlx-4bit qwen3-vl-8b-instruct-mlx-4bit
+  uv run python -m vision.experiments.e1_vlm_probe ask \\
+      --models qwen3-vl-4b-instruct-mlx-4bit qwen3-vl-8b-instruct-mlx-4bit
 """
 
 import argparse
@@ -23,12 +24,12 @@ OUT = ROOT / "data" / "processed" / "e1"
 RUNS = ROOT / "runs" / "e1"
 
 QUESTIONS = {
-    "key": ("safe", "This is a close-up of a grey metal safe. Is there a key inserted in the keyhole of the safe door "
-                    "(a small key or key head sticking out of the lock)?"),
+    "key": ("safe", "This is a close-up of a grey metal safe. Is there a key inserted in the keyhole of the safe "
+                    "door (a small key or key head sticking out of the lock)?"),
     "safe_open": ("safe", "This is a close-up of a grey metal safe. Is the safe door open?"),
     "screen": ("laptop", "This is a close-up of a laptop. Does the laptop screen show an open working application "
-                         "(for example a spreadsheet, a table or a program window)? Answer no if the screen shows a lock "
-                         "screen, a wallpaper picture, or is dark or closed."),
+                         "(for example a spreadsheet, a table or a program window)? Answer no if the screen "
+                         "shows a lock screen, a wallpaper picture, or is dark or closed."),
     "cash": ("desk", "This is a close-up of a desk. Are there banknotes or a stack of cash lying on the desk?"),
 }
 

@@ -1,0 +1,9 @@
+{
+ "X-28": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 16.53,
+  "processing_sec": 30.33,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=8"
+ }
+}

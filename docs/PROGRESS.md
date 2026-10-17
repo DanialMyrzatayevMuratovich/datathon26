@@ -22,3 +22,4 @@
 - 16:40 · bigali · Бигали · docs: norms verified against adilet (14/14 points, 21/21 quotes; act 48 repealed -> AFR 53), SUBMISSION.md skeleton, my task spec (R8, R9) · тесты: pass
 - 16:47 · bigali · Бигали · docs: pitch handed to another teammate, next: own videos (R11) · тесты: pass
 - 16:53 · bigali · Бигали · docs: R5 public access verified via quick tunnel, strict jury check 0 issues (help for asylbek) · тесты: pass
+- 16:56 · danial · Danial · ml: engine v1 (detection+rules+VLM), evaluate with double-run compare, gentle mode (4 threads, cooldown), mac monitor (R7) · тесты: pass

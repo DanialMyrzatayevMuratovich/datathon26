@@ -8,6 +8,7 @@ catalog), so the API and the UI can be built and deployed now.
 Switch: env VISION_ENGINE=mock|real (default: mock until the real engine is merged).
 """
 
+from vision import limits  # noqa: F401  (thread caps before torch is imported)
 from vision.pipeline import analyze
 
 __all__ = ["analyze"]

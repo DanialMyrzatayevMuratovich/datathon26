@@ -11,6 +11,8 @@ from pathlib import Path
 import torch
 from PIL import Image
 
+from vision import limits
+
 ROOT = Path(__file__).resolve().parent.parent
 MODELS_DIR = Path(os.getenv("MODELS_DIR", ROOT.parent / "models"))
 GDINO = MODELS_DIR / "grounding-dino-tiny"
@@ -28,6 +30,7 @@ OBJECTS = {
 
 @cache
 def _model():
+    limits.apply_torch()
     from transformers import AutoModelForZeroShotObjectDetection, AutoProcessor
 
     if not GDINO.exists():
@@ -53,7 +56,8 @@ def detect(im: Image.Image, keys: list[str], threshold: float = 0.3) -> dict[str
     res = proc.post_process_grounded_object_detection(
         out, inputs.input_ids, threshold=threshold, text_threshold=0.25, target_sizes=[im.size[::-1]])[0]
     found: dict[str, list] = {k: [] for k in keys}
-    for box, score, label in zip(res["boxes"].tolist(), res["scores"].tolist(), res["text_labels"], strict=True):
+    # text_labels can be longer than boxes in transformers 5 for single-phrase prompts: pair by position
+    for box, score, label in zip(res["boxes"].tolist(), res["scores"].tolist(), res["text_labels"], strict=False):
         k = _key_of(label, keys)
         if k:
             found[k].append(([round(v, 1) for v in box], round(float(score), 3)))

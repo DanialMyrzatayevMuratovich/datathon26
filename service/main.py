@@ -30,15 +30,23 @@ CSP = (
 )
 
 
-def validate_video(path: Path) -> None:
+def check_budget(deadline: float | None) -> None:
+    if deadline is not None and time.monotonic() >= deadline:
+        raise HTTPException(408, "Истекло время приёма видео. Повторите попытку.")
+
+
+def validate_video(path: Path, *, deadline: float | None = None) -> None:
     """Only parse a local QuickTime/MP4 container; never follow playlists or URLs."""
     try:
+        check_budget(deadline)
         result = subprocess.run(
             [
                 "ffprobe", "-v", "error", "-protocol_whitelist", "file,pipe", "-format_whitelist", "mov",
                 "-show_entries", "stream=codec_type,width,height:format=duration,format_name",
                 "-of", "json", str(path),
-            ], capture_output=True, timeout=10, check=True,
+            ], capture_output=True,
+            timeout=10 if deadline is None else max(0.001, min(10, deadline - time.monotonic())),
+            check=True,
         )
         info = json.loads(result.stdout)
         duration = float(info["format"]["duration"])
@@ -51,13 +59,15 @@ def validate_video(path: Path) -> None:
     except FileNotFoundError as exc:
         raise HTTPException(503, "FFmpeg/ffprobe не установлен на сервере.") from exc
     except (subprocess.SubprocessError, ValueError, KeyError, TypeError) as exc:
+        check_budget(deadline)
         raise HTTPException(400, "Файл не является доступным для чтения видео MOV.") from exc
 
 
-def save_upload(upload: UploadFile, destination: Path, limit: int) -> None:
+def save_upload(upload: UploadFile, destination: Path, limit: int, deadline: float | None = None) -> None:
     size = 0
     with destination.open("xb") as output:
         while chunk := upload.file.read(1024 * 1024):
+            check_budget(deadline)
             size += len(chunk)
             if size > limit:
                 raise HTTPException(413, "Видео превышает лимит загрузки.")
@@ -76,6 +86,7 @@ class ApiGuard:
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
+        started = time.monotonic()
         path = scope["path"]
         if path.startswith("/api/") and path != "/api/v1/health":
             headers = dict(scope["headers"])
@@ -112,7 +123,10 @@ class ApiGuard:
         total = 0
         exceeded = False
         timed_out = False
-        deadline = time.monotonic() + self.settings.upload_timeout_sec
+        # One server budget includes upload, validation, queue and inference.
+        analysis_deadline = started + self.settings.timeout_sec
+        scope.setdefault("state", {})["analysis_deadline"] = analysis_deadline
+        deadline = min(analysis_deadline, started + self.settings.upload_timeout_sec)
 
         async def limited_receive():
             nonlocal total, exceeded, timed_out
@@ -182,6 +196,7 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
 
     @app.post("/api/v1/analyze", response_model=AnalyzeAccepted)
     async def analyze(request: Request):
+        deadline = request.state.analysis_deadline
         if not request.headers.get("content-type", "").lower().startswith("multipart/form-data"):
             raise HTTPException(400, "Нужен multipart/form-data с полем file.")
         if not jobs.ready:
@@ -192,6 +207,7 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
         submitted = False
         try:
             async with request.form(max_files=1, max_fields=0) as form:
+                check_budget(deadline)
                 upload = form.get("file")
                 if not isinstance(upload, UploadFile) or len(form.multi_items()) != 1:
                     raise HTTPException(400, "Нужно одно видео в поле file.")
@@ -201,9 +217,13 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
                 if upload.size is not None and upload.size > settings.max_upload_bytes:
                     raise HTTPException(413, "Видео превышает лимит загрузки.")
                 job_id, directory = jobs.allocate()
-                await run_in_threadpool(save_upload, upload, directory / "source.mov", settings.max_upload_bytes)
-                await run_in_threadpool(probe, directory / "source.mov")
-                jobs.submit(job_id, filename)
+                await run_in_threadpool(save_upload, upload, directory / "source.mov",
+                                        settings.max_upload_bytes, deadline)
+                check_budget(deadline)
+                probe_options = {"deadline": deadline} if probe is validate_video else {}
+                await run_in_threadpool(probe, directory / "source.mov", **probe_options)
+                check_budget(deadline)
+                jobs.submit(job_id, filename, deadline=deadline)
                 submitted = True
                 return AnalyzeAccepted(job_id=job_id)
         except OSError as exc:

@@ -1,0 +1,127 @@
+{
+  "purpose": "Development comparison only; never automatic promotion or a jury-score guarantee",
+  "decision": "regression_requires_review",
+  "automatic_promotion": false,
+  "blockers": [
+    "baseline:missing_manifest",
+    "candidate:missing_manifest"
+  ],
+  "transitions_on_observed_videos": {
+    "tp_to_fn": [
+      "X-4",
+      "X-13"
+    ],
+    "tn_to_fp": [
+      "X-14"
+    ]
+  },
+  "regressed_videos": [
+    "X-4",
+    "X-13",
+    "X-14"
+  ],
+  "joint_event_regression": true,
+  "event_regressions_on_observed_videos": [
+    {
+      "video": "X-4",
+      "tolerance_sec": 2,
+      "lost_truth_indices": [
+        0
+      ],
+      "extra_unmatched_predictions": 0
+    },
+    {
+      "video": "X-14",
+      "tolerance_sec": 1,
+      "lost_truth_indices": [],
+      "extra_unmatched_predictions": 1
+    },
+    {
+      "video": "X-14",
+      "tolerance_sec": 2,
+      "lost_truth_indices": [],
+      "extra_unmatched_predictions": 1
+    }
+  ],
+  "independent_evaluation": "not_assessed",
+  "latency_and_memory": "not_assessed",
+  "labels_sha256": "c15aab36c786d9fd3111018952ce0b2cd89e51ff3b133d7441e5ea5f5904148f",
+  "runs": {
+    "baseline": "20261017T2214-5d08",
+    "candidate": "20261018T0039-5f22"
+  },
+  "baseline": {
+    "coverage": {
+      "complete": true,
+      "expected": 40,
+      "observed": 40,
+      "missing": [],
+      "extra": []
+    },
+    "binary": {
+      "tp": 15,
+      "fp": 0,
+      "fn": 6,
+      "tn": 19,
+      "accuracy": 0.85,
+      "accuracy_observed_only": 0.85,
+      "recall": 0.714286,
+      "precision": 1.0
+    },
+    "joint_events": {
+      "type_and_time_1s": {
+        "tp": 7,
+        "fp": 13,
+        "fn": 15,
+        "precision": 0.35,
+        "recall": 0.318182,
+        "f1": 0.333333
+      },
+      "type_and_time_2s": {
+        "tp": 9,
+        "fp": 11,
+        "fn": 13,
+        "precision": 0.45,
+        "recall": 0.409091,
+        "f1": 0.428571
+      }
+    }
+  },
+  "candidate": {
+    "coverage": {
+      "complete": true,
+      "expected": 40,
+      "observed": 40,
+      "missing": [],
+      "extra": []
+    },
+    "binary": {
+      "tp": 13,
+      "fp": 1,
+      "fn": 8,
+      "tn": 18,
+      "accuracy": 0.775,
+      "accuracy_observed_only": 0.775,
+      "recall": 0.619048,
+      "precision": 0.928571
+    },
+    "joint_events": {
+      "type_and_time_1s": {
+        "tp": 7,
+        "fp": 11,
+        "fn": 15,
+        "precision": 0.388889,
+        "recall": 0.318182,
+        "f1": 0.35
+      },
+      "type_and_time_2s": {
+        "tp": 8,
+        "fp": 10,
+        "fn": 14,
+        "precision": 0.444444,
+        "recall": 0.363636,
+        "f1": 0.4
+      }
+    }
+  }
+}

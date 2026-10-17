@@ -42,42 +42,74 @@ def check_one(url: str, key: str, path: Path, strict: bool = False) -> dict:
         "Content-Type: video/quicktime\r\n\r\n"
     ).encode() + path.read_bytes() + f"\r\n--{boundary}--\r\n".encode()
     started = time.monotonic()
+    deadline = started + 300
+    job_id = None
+    accepted = None
 
     def request(path_url: str, data=None):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("Acceptance deadline exceeded")
         headers = {"X-API-Key": key}
         if data is not None:
             headers["Content-Type"] = f"multipart/form-data; boundary={boundary}"
         req = urllib.request.Request(url + path_url, data=data, headers=headers)
-        with opener().open(req, timeout=40) as response:
+        # Upload may legitimately take >40s. Polls retain a short idle timeout,
+        # always bounded by the same overall acceptance budget.
+        with opener().open(req, timeout=remaining if data is not None else min(40, remaining)) as response:
             if strict and response.status != 200:
                 raise ValueError("Expected HTTP 200")
-            return json.load(response)
+            value = json.load(response)
+        # urllib's socket timeout is NOT a total wall deadline (slow drips).
+        # Reject late responses even when individual reads did not time out.
+        if time.monotonic() >= deadline:
+            raise TimeoutError("Acceptance deadline exceeded")
+        return value
 
-    accepted_response = request("/api/v1/analyze", body)
-    if strict and set(accepted_response) != {"job_id"}:
-        raise ValueError("Upload response must contain only job_id")
-    job_id = accepted_response["job_id"]
-    if not isinstance(job_id, str) or not job_id or urllib.parse.quote(job_id, safe="") != job_id:
-        raise ValueError("Invalid job identifier")
-    del body
-    accepted = time.monotonic() - started
-    while time.monotonic() - started < 300:
-        public = request(f"/api/v1/jobs/{job_id}")
-        if strict:
-            validate_public(public, job_id)
-        if public["status"] != "processing":
-            details = request(f"/api/v1/jobs/{job_id}/details")
-            return {
-                "job_id": job_id, "status": public["status"], "accepted_sec": round(accepted, 3),
-                "elapsed_sec": round(time.monotonic() - started, 3), "verdict": public.get("verdict"),
-                "violations": len(public.get("violations", [])),
-                "evidence_frames": sum(len(v["evidence_frames"]) for v in public.get("violations", [])),
-                "engine": (details.get("analysis") or {}).get("engine"), "error": details.get("error"),
-                "events": [{"type_id": v["type_id"], "timecode_sec": v["timecode_sec"]}
-                           for v in (details.get("analysis") or {}).get("violations", [])],
-            }
-        time.sleep(0.25)
-    return {"job_id": job_id, "status": "timeout", "elapsed_sec": round(time.monotonic() - started, 3)}
+    try:
+        accepted_response = request("/api/v1/analyze", body)
+        if strict and set(accepted_response) != {"job_id"}:
+            raise ValueError("Upload response must contain only job_id")
+        job_id = accepted_response["job_id"]
+        if not isinstance(job_id, str) or not job_id or urllib.parse.quote(job_id, safe="") != job_id:
+            raise ValueError("Invalid job identifier")
+        del body
+        accepted = time.monotonic() - started
+        while time.monotonic() < deadline:
+            public = request(f"/api/v1/jobs/{job_id}")
+            if strict:
+                validate_public(public, job_id)
+            elapsed = time.monotonic() - started
+            if elapsed >= 300:
+                raise TimeoutError("Acceptance deadline exceeded")
+            if public["status"] != "processing":
+                row = {
+                    "job_id": job_id, "status": public["status"], "accepted_sec": round(accepted, 3),
+                    "elapsed_sec": round(elapsed, 3), "verdict": public.get("verdict"),
+                    "violations": len(public.get("violations", [])),
+                    "evidence_frames": sum(len(v["evidence_frames"]) for v in public.get("violations", [])),
+                }
+                try:
+                    details = request(f"/api/v1/jobs/{job_id}/details")
+                    analysis = details.get("analysis") or {}
+                    row.update({
+                        "engine": analysis.get("engine"), "error": details.get("error"),
+                        "events": [{"type_id": v["type_id"], "timecode_sec": v["timecode_sec"]}
+                                   for v in analysis.get("violations", [])],
+                    })
+                except (OSError, ValueError, KeyError) as exc:
+                    # Batch consumers must not treat an unverified result with
+                    # missing internal events as a complete model prediction.
+                    row["public_status"] = row["status"]
+                    row["status"] = "verification_failed"
+                    row["verification_error"] = type(exc).__name__
+                row["verification_elapsed_sec"] = round(time.monotonic() - started, 3)
+                return row
+            time.sleep(min(0.25, max(0, deadline - time.monotonic())))
+    except TimeoutError:
+        pass
+    return {"job_id": job_id, "status": "timeout", "accepted_sec": accepted,
+            "elapsed_sec": round(time.monotonic() - started, 3)}
 
 
 def health_engine(url: str) -> str:
@@ -94,7 +126,7 @@ def passed(report: dict) -> bool:
     if len(report["results"]) != report["count"]:
         return False
     for row in report["results"]:
-        if row["status"] != "done" or row["elapsed_sec"] >= 300:
+        if row["status"] != "done" or row["elapsed_sec"] >= 300 or row.get("verification_error"):
             return False
         if report.get("expected_engine") == "real" and (not row.get("engine") or row["engine"] == "mock"):
             return False

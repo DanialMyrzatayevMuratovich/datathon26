@@ -166,6 +166,20 @@ def test_worker_failure_is_not_a_no_violation_result(service):
     assert client.get(f"/api/v1/jobs/{job_id}/details", headers=AUTH).json()["error"]
 
 
+def test_late_result_validation_cannot_publish_done(service, monkeypatch):
+    from contract.schemas import VideoAnalysis
+    validate = VideoAnalysis.model_validate_json
+
+    def slow_validation(cls, value):
+        time.sleep(1.1)
+        return validate(value)
+
+    monkeypatch.setattr(VideoAnalysis, "model_validate_json", classmethod(slow_validation))
+    client, _, _ = service(command=worker_command(delay=0), settings={"timeout_sec": 1})
+    job_id = upload(client).json()["job_id"]
+    assert wait_for_job(client, job_id)["status"] == "failed"
+
+
 def test_second_service_cannot_own_the_same_queue(service):
     _, _, settings = service()
     second = JobManager(settings)
@@ -276,6 +290,91 @@ def test_done_result_survives_restart_and_interrupted_job_fails(tmp_path):
     with TestClient(create_app(settings)) as client:
         assert client.get(f"/api/v1/jobs/{job_id}", headers=AUTH).json() == result
         assert client.get(f"/api/v1/jobs/{interrupted}", headers=AUTH).json()["status"] == "failed"
+
+
+def delayed_upload(app, delay):
+    """Real ASGI multipart streaming, no model or external network."""
+    messages = []
+
+    async def exercise():
+        first = True
+
+        async def receive():
+            nonlocal first
+            if first:
+                first = False
+                return {"type": "http.request", "more_body": True, "body": (
+                    b'--test\r\nContent-Disposition: form-data; name="file"; filename="x.mov"\r\n\r\nvideo'
+                )}
+            await asyncio.sleep(delay)
+            return {"type": "http.request", "more_body": False, "body": b"\r\n--test--\r\n"}
+
+        async def send(message):
+            messages.append(message)
+
+        await app({"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1", "method": "POST",
+                   "scheme": "http", "path": "/api/v1/analyze", "query_string": b"", "root_path": "",
+                   "server": ("test", 80), "client": ("test", 1234),
+                   "headers": [(b"x-api-key", KEY.encode()),
+                               (b"content-type", b"multipart/form-data; boundary=test")]}, receive, send)
+
+    asyncio.run(exercise())
+    status = next(m["status"] for m in messages if m["type"] == "http.response.start")
+    body = b"".join(m.get("body", b"") for m in messages if m["type"] == "http.response.body")
+    return status, json.loads(body)
+
+
+def test_upload_consumes_worker_budget(service):
+    client, manager, settings = service(
+        command=worker_command(delay=1.2), settings={"timeout_sec": 2, "workers": 1, "capacity": 1},
+    )
+    status, accepted = delayed_upload(create_app(settings, manager, probe=lambda path: None), 1.2)
+    assert status == 200
+    assert wait_for_job(client, accepted["job_id"])["status"] == "failed"
+    # With the old fresh timer after upload this worker returned done.
+
+
+@pytest.mark.parametrize("slow_stage", ["receive", "probe"])
+def test_expired_preparation_is_not_submitted_and_frees_capacity(service, slow_stage):
+    probe = (lambda path: time.sleep(0.2)) if slow_stage == "probe" else (lambda path: None)
+    client, manager, settings = service(
+        probe=probe, settings={"timeout_sec": 0.1, "workers": 1, "capacity": 1},
+    )
+    if slow_stage == "receive":
+        status, _ = delayed_upload(create_app(settings, manager, probe=probe), 0.2)
+    else:
+        status = upload(client).status_code
+    assert status == 408
+    assert not manager.records and not manager.uploads
+    assert not [p for p in settings.jobs_dir.iterdir() if p.is_dir()]
+    assert manager.reserve()
+    manager.slots.release()
+
+
+@pytest.mark.parametrize("remove_expired", [False, True])
+def test_earlier_deadline_queue_expiry_does_not_launch_or_release_twice(service, remove_expired):
+    client, manager, _ = service(command=worker_command(delay=1), settings={"workers": 1, "capacity": 2})
+    first = upload(client).json()["job_id"]
+    assert manager.reserve()
+    second, directory = manager.allocate()
+    manager.submit(second, "synthetic.mov", deadline=time.monotonic() - 1)
+    # Wall timestamps are retention metadata, not the processing clock.
+    manager.records[second]["created_at"] = time.time() + 10000
+    assert manager.get(second).status == "failed"
+    if remove_expired:
+        manager.records[second]["updated_at"] = 0
+        manager.cleanup()
+        assert manager.get(second) is None
+    assert wait_for_job(client, first)["status"] == "done"
+    limit = time.monotonic() + 2
+    while manager.pending.unfinished_tasks and time.monotonic() < limit:
+        time.sleep(0.03)
+    assert not manager.pending.unfinished_tasks
+    assert not (directory / "worker.log").exists()
+    assert manager.threads[0].is_alive()
+    assert manager.reserve() and manager.reserve() and not manager.reserve()
+    manager.slots.release()
+    manager.slots.release()
 
 
 def test_retention_and_static_ui(service):

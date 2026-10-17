@@ -147,11 +147,17 @@ class JobManager:
                 self.uploads.discard(job_id)
                 self.unsaved.discard(job_id)
 
-    def submit(self, job_id: str, filename: str) -> None:
+    def submit(self, job_id: str, filename: str, *, deadline: float | None = None) -> None:
         now = time.time()
+        budget_deadline = time.monotonic() + self.settings.timeout_sec
+        if deadline is not None:
+            if not math.isfinite(deadline):
+                raise ValueError("Job deadline must be finite")
+            budget_deadline = min(budget_deadline, deadline)
         details = JobDetails(job_id=job_id, status="processing", filename=filename, stage="queued")
         with self.lock:
-            self.records[job_id] = {"created_at": now, "updated_at": now, "details": details.model_dump()}
+            self.records[job_id] = {"created_at": now, "updated_at": now,
+                                    "deadline_monotonic": budget_deadline, "details": details.model_dump()}
             try:
                 self.update(job_id)
             except OSError:
@@ -166,7 +172,15 @@ class JobManager:
             return None
         with self.lock:
             record = self.records.get(job_id)
+            if record:
+                self._expire_queued(job_id, record)
             return JobDetails.model_validate(record["details"]) if record else None
+
+    def _expire_queued(self, job_id: str, record: dict) -> None:
+        # Caller holds lock. The queue consumer alone releases the capacity slot.
+        if (record["details"]["status"] == "processing" and record["details"].get("stage") == "queued"
+                and time.monotonic() >= record["deadline_monotonic"]):
+            self.fail(job_id, "Истекло время ожидания в очереди.")
 
     def update(self, job_id: str, **changes) -> None:
         with self.lock:
@@ -213,12 +227,15 @@ class JobManager:
     def _run(self, job_id: str) -> None:
         directory = self.settings.jobs_dir / job_id
         with self.lock:
-            remaining = self.settings.timeout_sec - (time.time() - self.records[job_id]["created_at"])
-        if remaining <= 0:
-            self.update(job_id, status="failed", stage="failed", error="Истекло время ожидания в очереди.")
-            return
-        deadline = time.monotonic() + remaining
-        self.update(job_id, stage="decode")
+            record = self.records.get(job_id)
+            # Retention may remove an expired queued job before its turn.
+            if record is None:
+                return
+            self._expire_queued(job_id, record)
+            if record["details"]["status"] != "processing":
+                return
+            deadline = record["deadline_monotonic"]
+            self.update(job_id, stage="decode")
         env = os.environ.copy()
         env.update(VISION_ENGINE=self.settings.engine, PYTHONIOENCODING="utf-8")
         env["MODELS_DIR"] = str(Path(env.get("MODELS_DIR", ROOT.parent / "models")).expanduser().resolve())
@@ -233,7 +250,7 @@ class JobManager:
             try:
                 while process.poll() is None:
                     if self.stopping.is_set() or time.monotonic() >= deadline:
-                        reason = "Сервис остановлен." if self.stopping.is_set() else "Превышен лимит обработки (270 с)."
+                        reason = "Сервис остановлен." if self.stopping.is_set() else "Превышен общий лимит обработки."
                         stop_process(process)
                         self.update(job_id, status="failed", stage="failed", error=reason)
                         return
@@ -242,9 +259,12 @@ class JobManager:
                 if process.returncode != 0:
                     raise RuntimeError(f"Worker exit code {process.returncode}")
                 if time.monotonic() >= deadline:
-                    self.update(job_id, status="failed", stage="failed", error="Превышен лимит обработки (270 с).")
+                    self.update(job_id, status="failed", stage="failed", error="Превышен общий лимит обработки.")
                     return
                 analysis = VideoAnalysis.model_validate_json((directory / "analysis.json").read_text("utf-8"))
+                if time.monotonic() >= deadline:
+                    self.fail(job_id, "Превышен общий лимит обработки.")
+                    return
                 self.update(job_id, status="done", progress=1.0, stage="report", analysis=analysis.model_dump())
                 LOG.info("Job done: %s engine=%s", job_id, analysis.engine)
             finally:
@@ -301,6 +321,9 @@ class JobManager:
         while not self.stopping.wait(1):
             try:
                 self.flush_pending()
+                with self.lock:
+                    for job_id, record in self.records.items():
+                        self._expire_queued(job_id, record)
                 if time.monotonic() - last_cleanup >= 60:
                     self.cleanup()
                     last_cleanup = time.monotonic()

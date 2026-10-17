@@ -29,5 +29,15 @@ if [ "$set_" = "all" ]; then
   dl mlx-community/Qwen3-VL-8B-Instruct-4bit defcdea7cc7a4b0858fea563cbbce171d328e457 qwen3-vl-8b-instruct-mlx-4bit  # VLM quality, 5.8 GB
   dl usyd-community/vitpose-base-simple a93ac0c67e0b7e2c55287d21d4c460c8f3c54d45 vitpose-base                     # pose, 0.3 GB
 fi
+# the pinned MLX Qwen revision ships a stale model.safetensors.index.json (it names two shards that are not in the repo,
+# the weights are one model.safetensors); mlx-vlm then falls back to *.safetensors, but the service preflight refuses
+# the set. Put such an index aside (kept as *.stale).
+for idx in "$dest"/*/model.safetensors.index.json; do
+  [ -f "$idx" ] || continue
+  d=$(dirname "$idx")
+  if python3 -c 'import json,sys,os; d=sys.argv[1]; m=json.load(open(os.path.join(d,"model.safetensors.index.json")))["weight_map"]; sys.exit(0 if all(os.path.exists(os.path.join(d,f)) for f in set(m.values())) else 1)' "$d"; then :; else
+    mv "$idx" "$idx.stale" && echo "… $d: устаревший индекс весов отложен (*.stale)"
+  fi
+done
 echo "✔ веса в $dest"
 du -sh "$dest"/* 2>/dev/null

@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw
 ROOT = Path(__file__).resolve().parents[2]
 os.environ.setdefault("DT_CACHE", str(ROOT / "runs" / "cache"))
 
-from vision import engine, scene, vlm  # noqa: E402
+from vision import engine, vlm  # noqa: E402
 from vision.devcache import DevCache  # noqa: E402
 from vision.evaluate import video_path  # noqa: E402
 from vision.frames import crop, sample  # noqa: E402
@@ -37,14 +37,7 @@ def scene_box(dc: DevCache, frames, key: str):
     if key in ("desk", "laptop", "safe"):
         return getattr(dc.get("scene", lambda: engine.find_scene(frames)), key)
 
-    def find():
-        best = None
-        for _, im in (frames[0], frames[len(frames) // 2], frames[-1]):
-            items = scene.detect(im, [key], threshold=0.25).get(key, [])
-            if items and (best is None or items[0][1] > best[1]):
-                best = items[0]
-        return best[0] if best else None
-    return dc.get(("scene_extra", key), find)
+    return dc.get(("scene_extra", key), lambda: engine.find_object(frames, key))
 
 
 def scan(vid: str, name: str, every: float, t0: float, t1: float, sheet: bool = True) -> list:

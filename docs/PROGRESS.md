@@ -29,3 +29,4 @@
 - 20:27 · asylbek · Асылбек · fix: isolate live inference cache and audit remaining delivery work (R4,R5,R7,R9) · тесты: pass
 - 21:13 · bigali · Бигали · ui: same-origin API only, fetch/XHR timeouts, stop-waiting label; docs: norms table re-verified after catalog fix, T0 p.5 (R6, R8, R9) · тесты: pass
 - 21:26 · bigali · Бигали · docs: R7 ideas for danial — error breakdown of run 1848-ab5a, priorities, offers (R7) · тесты: pass
+- 21:29 · danial · Danial · ml: eval 32/40 (80%), 1 false alarm; cashier tracking, seated-only T4, T9 refinement + bag context, faster checks; METRICS/ARCHITECTURE updated; stale Qwen index handled (R7) · тесты: pass

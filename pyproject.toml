@@ -36,6 +36,12 @@ dependencies = [
     "tqdm>=4.66",
     "tabulate>=0.9",
     "python-multipart>=0.0.32",
+    "torch>=2.6",
+    "torchvision>=0.21",
+    "transformers>=4.57",
+    "supervision>=0.25",
+    "opencv-python-headless>=4.10",
+    "mlx-vlm>=0.3.5 ; platform_machine == 'arm64' and sys_platform == 'darwin'",
 ]
 
 [dependency-groups]
@@ -57,3 +63,13 @@ extend-exclude = ["notebooks", "web"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
+
+# Linux / Docker: CPU-only torch (no multi-GB CUDA wheels); macOS and Windows take torch from PyPI.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+torchvision = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

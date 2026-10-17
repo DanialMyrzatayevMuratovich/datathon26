@@ -11,3 +11,4 @@
 - 13:29 · danial · Danial · kickoff: contract (contract/schemas.py), vision.analyze mock, requirements, zones, tasks for asylbek/bigali/danial · тесты: pass
 - 13:51 · danial · Danial · docs: ML spec (models, metrics, double-run protocol, fine-tuning levels) · тесты: pass
 - 13:52 · danial · Danial · chore: checkpoint retries network errors instead of reporting a conflict · тесты: pass
+- 14:03 · danial · Danial · ml: model set pinned (Qwen3-VL-4B MLX, RT-DETRv2, Grounding DINO, bge-m3, SigLIP2), RAG design, download script · тесты: pass

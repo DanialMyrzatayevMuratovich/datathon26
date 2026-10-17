@@ -25,3 +25,4 @@
 - 16:56 · danial · Danial · ml: engine v1 (detection+rules+VLM), evaluate with double-run compare, gentle mode (4 threads, cooldown), mac monitor (R7) · тесты: pass
 - 17:03 · danial · Danial · laws: T5 -> ARDFM act 53 (NBRK 48 repealed 03.04.2026), T4 -> interpretation, repeal guard in catalog builder (R8) · тесты: pass
 - 17:57 · asylbek · Асылбек · fix: harden video API and prepare dedicated Mac deployment (R1-R5, R9) · тесты: pass
+- 18:58 · danial · Danial · ml: angle-free cashier side, leave-start timecode, T2 per client, T11 bag on desk, T4 at-safe fix, T0 in catalog, dev cache; 40-video eval 15/21 found, 3/19 false (R7) · тесты: FAIL

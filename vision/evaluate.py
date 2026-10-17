@@ -3,6 +3,7 @@
   uv run python -m vision.evaluate                       # all 40 unique videos -> runs/eval/<run_id>/
   uv run python -m vision.evaluate --only X-28,X-26      # subset for quick iterations
   uv run python -m vision.evaluate --compare <run1> <run2>   # second run must match the first exactly
+  uv run python -m vision.evaluate --cache --only X-28    # rule tuning: detections/VLM answers from runs/cache
 
 Duplicates (X-47 = X-4, X-48 = X-5) are one video; X-4 then has two labelled events.
 """
@@ -135,10 +136,13 @@ def compare(a: str, b: str) -> int:
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--only", default="")
+    p.add_argument("--cache", action="store_true", help="reuse detections/VLM answers (tuning only, not for metrics)")
     p.add_argument("--compare", nargs=2, metavar=("RUN1", "RUN2"))
     a = p.parse_args()
     if a.compare:
         raise SystemExit(compare(*a.compare))
+    if a.cache:
+        os.environ["DT_CACHE"] = str(ROOT / "runs" / "cache")
     run([v.strip() for v in a.only.split(",") if v.strip()] or None)
 
 

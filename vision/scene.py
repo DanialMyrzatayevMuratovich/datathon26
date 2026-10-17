@@ -25,6 +25,7 @@ OBJECTS = {
     "desk": ("a wooden desk", ("desk", "wooden")),
     "bag": ("a green bag", ("bag",)),
     "cash": ("a stack of banknotes", ("banknote", "stack", "money")),
+    "machine": ("a banknote counting machine", ("machine", "counting")),
 }
 
 

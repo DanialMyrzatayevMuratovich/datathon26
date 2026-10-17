@@ -1,0 +1,65 @@
+{
+ "videos": 3,
+ "tp": 1,
+ "fp": 2,
+ "fn": 0,
+ "tn": 0,
+ "recall": 1.0,
+ "precision": 0.333,
+ "accuracy": 0.333,
+ "type_hit": "0/1",
+ "time_hit_2s": "0/1",
+ "max_seconds": 75.82,
+ "per_video": {
+  "X-34": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "t": 13.0,
+      "type_id": "T8",
+      "confidence": "high"
+     },
+     "type_hit": false,
+     "time_hit": false
+    }
+   ],
+   "pred_types": [
+    [
+     "T7",
+     1.5
+    ]
+   ],
+   "seconds": 36.64
+  },
+  "X-35": {
+   "gt": false,
+   "pred": true,
+   "events": [],
+   "pred_types": [
+    [
+     "T7",
+     1.5
+    ],
+    [
+     "T4",
+     42.0
+    ]
+   ],
+   "seconds": 75.82
+  },
+  "X-37": {
+   "gt": false,
+   "pred": true,
+   "events": [],
+   "pred_types": [
+    [
+     "T7",
+     2.5
+    ]
+   ],
+   "seconds": 33.13
+  }
+ }
+}

@@ -54,6 +54,7 @@ data/laws/bank_law_qa.csv
 
 # service jobs: uploaded videos and results (organizers data, never in git)
 runs/jobs/
+runs/cache/
 
 # Mac monitor (scripts/macmon.sh): log, overload flag, compiled probe
 runs/macmon.log

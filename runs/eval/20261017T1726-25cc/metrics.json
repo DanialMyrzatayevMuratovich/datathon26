@@ -1,0 +1,117 @@
+{
+ "videos": 6,
+ "tp": 3,
+ "fp": 1,
+ "fn": 1,
+ "tn": 1,
+ "recall": 0.75,
+ "precision": 0.75,
+ "accuracy": 0.667,
+ "type_hit": "3/4",
+ "time_hit_2s": "1/4",
+ "max_seconds": 44.37,
+ "per_video": {
+  "X-15": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "t": 15.0,
+      "type_id": "T1",
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": false
+    }
+   ],
+   "pred_types": [
+    [
+     "T1",
+     19.5
+    ]
+   ],
+   "seconds": 31.96
+  },
+  "X-23": {
+   "gt": false,
+   "pred": false,
+   "events": [],
+   "pred_types": [],
+   "seconds": 26.6
+  },
+  "X-28": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "t": 7.0,
+      "type_id": "T5",
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": false
+    }
+   ],
+   "pred_types": [
+    [
+     "T5",
+     15.0
+    ]
+   ],
+   "seconds": 38.21
+  },
+  "X-30": {
+   "gt": true,
+   "pred": false,
+   "events": [
+    {
+     "gt": {
+      "t": 13.0,
+      "type_id": "T7",
+      "confidence": "high"
+     },
+     "type_hit": false,
+     "time_hit": false
+    }
+   ],
+   "pred_types": [],
+   "seconds": 31.78
+  },
+  "X-34": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "t": 13.0,
+      "type_id": "T8",
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": true
+    }
+   ],
+   "pred_types": [
+    [
+     "T8",
+     15.0
+    ]
+   ],
+   "seconds": 28.52
+  },
+  "X-35": {
+   "gt": false,
+   "pred": true,
+   "events": [],
+   "pred_types": [
+    [
+     "T8",
+     54.5
+    ]
+   ],
+   "seconds": 44.37
+  }
+ }
+}

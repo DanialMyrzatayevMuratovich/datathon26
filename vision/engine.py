@@ -15,6 +15,7 @@ from PIL import Image
 
 from contract.schemas import EvidenceFrame, VideoAnalysis, ViolationDetail
 from vision import people, scene, vlm
+from vision.devcache import DevCache
 from vision.frames import crop, info, sample
 from vision.pipeline import describe_rule, rules_for
 
@@ -24,8 +25,12 @@ ARRIVE_MIN_S = 2.0
 TWO_AT_DESK_MIN_S = 2.0
 SAFE_OPEN_MIN_S = 6.0
 SAFE_CHECK_EVERY_S = 2.0
-EAT_CHECK_EVERY_S = 3.0
+EAT_CHECK_EVERY_S = 6.0
 BAG_SCORE = 0.55
+BAGS = ("handbag", "backpack", "suitcase")
+RETURN_MAX_S = 1.0  # a return to the post this short does not end leaving
+LEAVE_LOOKBACK_S = 12.0
+DEPTH_BAND = 0.06  # of the frame height: feet this close in the image = the same distance from the camera
 
 Q_SCREEN = ("This is a close-up of a laptop. Does the laptop screen show an open working application (for example a "
             "spreadsheet, a table or a program window)? Answer no if the screen shows a lock screen, a wallpaper "
@@ -33,7 +38,8 @@ Q_SCREEN = ("This is a close-up of a laptop. Does the laptop screen show an open
 Q_SAFE = "This is a close-up of a grey metal safe. Is the safe door open?"
 Q_CASH = "Are there banknotes or a stack of paper money in this image?"
 Q_EAT = "Is this person eating food or drinking from a cup or bottle right now?"
-Q_ITEMS = "Is there a jacket, a coat or a handbag lying on this desk?"
+Q_ITEMS = ("Is there a personal item — a jacket, a coat or a handbag — lying on this desk? Answer no for cash, "
+           "documents, a laptop, a phone or a green cash-collection bag.")
 Q_HANDLING = ("Is someone handling banknotes in this image right now — counting cash by hand or feeding money into "
               "a banknote counting machine (a machine with a slot and a display)?")
 
@@ -132,20 +138,28 @@ def _tiles(im: Image.Image, box, nx=3, ny=2, overlap=0.35) -> list[Image.Image]:
 class Checker:
     """VLM checks with a per-frame cache (the same question on the same frame is asked once)."""
 
-    def __init__(self, frames, sc: Scene):
+    def __init__(self, frames, sc: Scene, dc: DevCache | None = None):
         self.frames, self.sc, self.cache, self.calls = frames, sc, {}, 0
+        self.by_kind: dict[str, int] = {}
+        self.dc = dc
 
     def _ask(self, key, images, q) -> bool:
         if key not in self.cache:
             ans = False
             for im in images:
-                a, _, _ = vlm.yes_no([im], q)
-                self.calls += 1
+                self.by_kind[key[0]] = self.by_kind.get(key[0], 0) + 1
+                a = self._yes_no(im, q)
                 if a:
                     ans = True
                     break
             self.cache[key] = ans
         return self.cache[key]
+
+    def _yes_no(self, im, q):
+        def ask():
+            self.calls += 1
+            return vlm.yes_no([im], q)[0]
+        return self.dc.vlm(im, q, ask) if self.dc else ask()
 
     def screen_app(self, i):
         return self.sc.laptop is not None and self._ask(("screen", i), [crop(self.frames[i][1], self.sc.laptop)],
@@ -175,7 +189,9 @@ class Checker:
             return False
         key = ("bag", i)
         if key not in self.cache:
-            found = scene.detect(self.frames[i][1], ["bag"], threshold=0.3)
+            def det():
+                return scene.detect(self.frames[i][1], ["bag"], threshold=0.3)
+            found = self.dc.get(key, det) if self.dc else det()
             self.cache[key] = any(s >= BAG_SCORE and _ioa(b, _grow(self.sc.desk, 0.1)) > 0.5
                                   for b, s in found.get("bag", []))
         return self.cache[key]
@@ -203,34 +219,130 @@ def room_persons(dets, sc: Scene, H: int) -> list[list[people.Det]]:
     return out
 
 
-def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
+@dataclass
+class Tracks:
+    """Per-frame layout of people relative to the scene objects."""
+    t: list[float]
+    persons: list  # people in the room
+    at_work: list  # people in the workplace zone (desk + laptop + safe)
+    near_cash: list  # ... on the cashier's side of the desk
+    behind: list  # ... on the client's side
+    present: list[bool]
+    counts: list[int]
+    client_here: list[bool]
+    at_seat: list[bool]
+    at_safe: list[bool]
+    cashier_below: bool
+    desk_top: float
+    cashier: list  # the cashier's box per frame (the person on her side closest to her depth) or None
+    depth: float | None  # the cashier's box bottom (pixels)
+
+
+def cashier_depth(at_work, H: int) -> float | None:
+    """Box bottom (pixels) of the cashier = her depth in the image. The cashier is the one who is at the workplace
+    alone at some point (before/after a client), so the most common bottom in frames with exactly one person there
+    wins; without such frames — the most common bottom overall."""
+    solo = sorted(ps[0].bottom for ps in at_work if len(ps) == 1)
+    bottoms = solo if len(solo) >= 4 else sorted(p.bottom for ps in at_work for p in ps)
+    if not bottoms:
+        return None
+    w = DEPTH_BAND * H / 2
+    best = max(bottoms, key=lambda b: sum(abs(x - b) <= w for x in bottoms))
+    near = [x for x in bottoms if abs(x - best) <= w]
+    return near[len(near) // 2]
+
+
+def tracks(frames, dets, sc: Scene) -> Tracks:
     H = frames[0][1].height
-    n = len(frames)
-    t = [f[0] for f in frames]
     work = _grow(_union(sc.desk, sc.laptop, sc.safe), 0.15)
     safe_zone = _grow(sc.safe, 0.25)
     desk_top = sc.desk[1] if sc.desk else 0.45 * H
     persons = room_persons(dets, sc, H)
     at_work = [[p for p in ps if _ioa(p.box, work) >= 0.25] for ps in persons]
-    # The cashier's side is where the laptop stands; the client sits across the desk. From a camera above, the two
-    # sides differ by the vertical position of the person's feet relative to the desk: the person on the laptop's
-    # side has the box bottom on the same side of the desk centre as the laptop (works for both camera angles).
-    # Angle: the laptop lies on the cashier's edge of the desk. On the far edge (angle A) its centre is at or above
-    # the desk top in the image; on the near edge (angle B, camera behind the cashier) it sits clearly below it.
-    laptop_mid = (sc.laptop[1] + sc.laptop[3]) / 2 if sc.laptop else desk_top
-    cashier_below = laptop_mid > desk_top + 0.03 * H
+    # The cashier's side, without assuming a camera angle: the cashier is the person who stays at the workplace for
+    # most of the video, so the most common foot line (box bottom) of people there is her depth in the image. People
+    # at the same depth (within DEPTH_BAND of the frame height) are on her side of the desk; a client across the desk
+    # stands at another depth whichever way the camera looks (behind the cashier, in front of her or from the side).
+    depth = cashier_depth(at_work, H)
+    cashier_below = depth is not None and depth > desk_top + 0.08 * H  # informational: camera behind the cashier
 
     def cashier_side(p) -> bool:
-        return (p.bottom >= desk_top + 0.08 * H) if cashier_below else (p.bottom < desk_top + 0.08 * H)
+        return depth is not None and abs(p.bottom - depth) <= DEPTH_BAND * H
 
     near_cash = [[p for p in ps if cashier_side(p)] for ps in at_work]
     behind = [[p for p in ps if not cashier_side(p)] for ps in at_work]
-    at_safe = [any(_ioa(p.box, safe_zone) >= 0.2 for p in ps) for ps in at_work]
-    present = [len(ps) > 0 for ps in at_work]
-    counts = [len(ps) for ps in at_work]
-    client_here = [len(ps) > 0 for ps in behind]
     seat_zone = _grow(_union(sc.laptop, sc.safe), 0.6, 0.4)
-    at_seat = [any(_ioa(p.box, seat_zone) >= 0.35 for p in ps) for ps in near_cash]
+    hs = sorted(p.height for ps in near_cash for p in ps)
+    h_sit = hs[len(hs) // 4] if hs else 0.0  # the cashier's box when seated; taller = standing (at the safe)
+    in_front = lambda p: sc.safe is not None and sc.safe[0] <= p.cx <= sc.safe[2]  # noqa: E731
+    return Tracks(
+        t=[f[0] for f in frames], persons=persons, at_work=at_work, near_cash=near_cash, behind=behind,
+        present=[len(ps) > 0 for ps in at_work], counts=[len(ps) for ps in at_work],
+        client_here=[len(ps) > 0 for ps in behind],
+        at_seat=[any(_ioa(p.box, seat_zone) >= 0.25 for p in ps) for ps in near_cash],
+        # at the safe = operating it: in its zone and standing, or right in front of it (sitting next to it is not)
+        at_safe=[any(_ioa(p.box, safe_zone) >= 0.2 and (p.height > 1.25 * h_sit or in_front(p)) for p in ps)
+                 for ps in at_work],
+        cashier_below=cashier_below, desk_top=desk_top,
+        cashier=[min(ps, key=lambda p: abs(p.bottom - depth)) if ps else None for ps in near_cash], depth=depth)
+
+
+def leave_start(tr: Tracks, s: int, W: int) -> int:
+    """First frame of leaving before the workplace got empty at frame s: the cashier steps away from her working
+    position and does not come back (returns of <= RETURN_MAX_S are ignored). Her working position = where she sits
+    (the frames with her lowest boxes); leaving can start up to LEAVE_LOOKBACK_S before s."""
+    boxes = [b for b in tr.cashier if b is not None]
+    if not boxes:
+        return s
+    h_sit = sorted(b.height for b in boxes)[len(boxes) // 4]
+    sit = [b for b in boxes if b.height <= 1.25 * h_sit]
+    x_sit = sorted(b.cx for b in sit)[len(sit) // 2]
+    tol = max(0.05 * W, 0.35 * sorted(b.box[2] - b.box[0] for b in sit)[len(sit) // 2])
+    at_post = [b is not None and abs(b.cx - x_sit) <= tol for b in tr.cashier]
+    k_ret = max(1, round(RETURN_MAX_S * FPS))
+    lo = max(0, s - round(LEAVE_LOOKBACK_S * FPS))
+    i = s - 1
+    while i >= lo:
+        if not at_post[i]:
+            i -= 1
+            continue
+        j = i
+        while j >= lo and at_post[j]:
+            j -= 1
+        if i - j <= k_ret and j >= lo and not at_post[j]:
+            i = j  # a short return to the post on the way out
+            continue
+        break
+    return min(s, i + 1)
+
+
+def client_arrivals(tr: Tracks) -> list[int]:
+    """Frames where a new client comes to the desk: a client-side person standing (box >= 1.4x the seated client
+    box) when nobody sat there for 3 s, who sits down within 4 s; or a client appearing after >= 2 s with nobody on
+    the client side."""
+    hs = sorted(p.height for ps in tr.behind for p in ps)
+    if not hs:
+        return []
+    h_sit = hs[len(hs) // 4]
+    stand = [any(p.height >= 1.4 * h_sit for p in ps) for ps in tr.behind]
+    sit = [any(p.height <= 1.25 * h_sit for p in ps) for ps in tr.behind]
+    k = lambda sec: max(1, round(sec * FPS))  # noqa: E731
+    out = []
+    for s, e in _runs(stand, True, 1):
+        new = not any(sit[max(0, s - k(3.0)):s])  # nobody was sitting there just before: a new client
+        if new and any(sit[e:e + k(4.0)]) and not (out and s - out[-1] < k(3.0)):
+            out.append(s)
+    for s, _e in _runs(tr.client_here, True, k(2.0)):
+        if s >= k(2.0) and not any(abs(s - o) < k(3.0) for o in out):
+            out.append(s)
+    return sorted(out)
+
+
+def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
+    n = len(frames)
+    tr = tracks(frames, dets, sc)
+    t, near_cash, present, counts = tr.t, tr.near_cash, tr.present, tr.counts
+    client_here, at_safe = tr.client_here, tr.at_safe
     k = lambda s: max(1, round(s * FPS))  # noqa: E731
     events: list[Event] = []
 
@@ -243,9 +355,7 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
     for s, _e in leave_runs:
         if s == 0:
             continue  # empty from the start: nobody left
-        # leaving starts when she steps away from her seat; walking past the desk to the door takes a few seconds
-        last_seat = max((i for i in range(s) if at_seat[i]), default=s - 1)
-        t_leave = round((t[last_seat] + t[s - 1]) / 2, 1)
+        t_leave = t[leave_start(tr, s, frames[0][1].width)]
         j = min(n - 1, s + k(2.0))  # state of the workplace 2 s after it is empty
         if chk.screen_app(j) and not has("T5"):
             events.append(Event("T5", t_leave, [t[j]], "кассир покидает рабочее место, экран ноутбука остаётся "
@@ -259,13 +369,12 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
         if chk.safe_open(j) and not has("T4"):
             events.append(Event("T4", t_leave, [t[j]], "кассир покидает рабочее место, дверца сейфа открыта", 0.8))
 
-    # 2) a visitor arrives while someone is already there -> cash already lying open on the desk?
-    for i in range(1, n - k(ARRIVE_MIN_S)):
-        if counts[i - 1] >= 1 and all(c > counts[i - 1] for c in counts[i:i + k(ARRIVE_MIN_S)]):
-            if chk.cash_on_desk(i):
-                events.append(Event("T2", t[i], [t[i]], "в зону стола входит посетитель, а на столе открыто лежат "
-                                    "наличные", 0.7))
-            break
+    # 2) a client comes to the desk while cash already lies open on it (checked for every client, not the first)
+    for i in client_arrivals(tr):
+        j = min(n - 1, i + k(1.0))
+        if present[i] and chk.cash_on_desk(i) and chk.cash_on_desk(j) and not has("T2"):
+            events.append(Event("T2", t[i], [t[i], t[j]], "к столу подходит клиент, а на столе открыто лежат "
+                                "наличные", 0.7))
 
     # 3) an outsider on the cashier's side: two or more people between the camera and the desk for a while.
     #    (People waiting by the door or seen through the glass are not on the cashier's side and do not count.)
@@ -292,29 +401,41 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
     for _s, e in was_client:
         if e >= n - 1 or not all(present[e:min(n, e + k(3.0))]) or has("T8"):
             continue
-        j = min(n - 1, e + k(1.5))
-        ps = near_cash[j]
-        if ps and chk.handling_cash(j, list(ps[0].box)):
+        j, j2 = min(n - 1, e + k(1.5)), min(n - 1, e + k(4.0))
+        ps, ps2 = near_cash[j], near_cash[j2]
+        if ps and ps2 and chk.handling_cash(j, list(ps[0].box)) and chk.handling_cash(j2, list(ps2[0].box)):
             events.append(Event("T8", t[e], [t[j]], "клиент уходит, а кассир продолжает пересчёт его наличных "
                                 "уже без него", 0.7))
 
-    # 5) eating/drinking at the workplace
-    hits = []
-    for i in range(0, n, k(EAT_CHECK_EVERY_S)):
-        for p in near_cash[i][:1]:
-            if chk.eating(i, list(p.box)):
-                hits.append(i)
+    # 5) eating/drinking at the workplace: asked when the detector sees a cup/bottle at the cashier (every 2 s at most)
+    #    and once per EAT_CHECK_EVERY_S otherwise — a few VLM calls instead of one every few seconds
+    cand = set(range(0, n, k(EAT_CHECK_EVERY_S)))
+    last = -k(2.0)
+    for i, ds in enumerate(dets):
+        cb = tr.cashier[i]
+        if cb and i - last >= k(2.0) and any(d.label in ("cup", "bottle") and d.score >= 0.4
+                                               and _ioa(d.box, _grow(list(cb.box), 0.3)) > 0.5 for d in ds):
+            cand.add(i)
+            last = i
+    hits = [i for i in sorted(cand) if tr.cashier[i] and chk.eating(i, list(tr.cashier[i].box))]
     if len(hits) >= 2:
-        events.append(Event("T12", t[hits[0]], [t[hits[0]]], "кассир ест или пьёт за рабочим столом", 0.7))
+        events.append(Event("T12", t[hits[0]], [t[hits[0]], t[hits[1]]], "кассир ест или пьёт за рабочим столом",
+                            0.7))
 
-    # 6) personal items on the desk right after the cashier arrives at an empty workplace
-    for s, _e in _runs(present, True, k(ARRIVE_MIN_S)):
-        if s > 0:
-            j = min(n - 1, s + k(3.0))
+    # 6) personal items: the detector sees a bag lying on the cashier's half of the desk (not carried by anyone) for
+    #    >= 3 s, and the VLM confirms a jacket/handbag on the desk. The cashier's half: the half of the desk box on the
+    #    side of her depth line — so client's things across the desk do not count, whatever the camera angle.
+    if sc.desk and tr.depth is not None:
+        desk_zone, mid = _grow(sc.desk, 0.05), (sc.desk[1] + sc.desk[3]) / 2
+        mine = lambda b: ((b[1] + b[3]) / 2 >= mid) == (tr.depth >= mid)  # noqa: E731
+        bag = [any(d.label in BAGS and d.score >= 0.5 and _ioa(d.box, desk_zone) >= 0.6 and mine(d.box)
+                   and all(_ioa(d.box, p.box) < 0.5 for p in tr.persons[i]) for d in dets[i]) for i in range(n)]
+        for s, _e in _runs(bag, True, k(3.0)):
+            j = min(n - 1, s + k(1.0))
             if chk.items_on_desk(j):
-                events.append(Event("T11", t[s], [t[j]], "на рабочий стол положены верхняя одежда или личная сумка",
-                                    0.6))
-            break
+                events.append(Event("T11", t[s], [t[s], t[j]], "на рабочем столе кассира лежат личные вещи "
+                                    "(сумка, верхняя одежда)", 0.6))
+                break
 
     # 7) a visitor hands over a bag and leaves within ~12 s (no document/seal check); the bag was not there before
     for s, e in _runs([c >= 2 for c in counts], True, 1):
@@ -331,16 +452,18 @@ def run(path, progress=None) -> VideoAnalysis:
     started = time.perf_counter()
     vi = info(path)
     frames = sample(path, fps=FPS)
+    dc = DevCache(path)
     if progress:
         progress(0.1, "decode")
-    sc = find_scene(frames)
+    sc = dc.get("scene", lambda: find_scene(frames))
     if progress:
         progress(0.2, "scene")
-    dets = people.detect([im for _, im in frames])
+    dets = dc.get("dets", lambda: people.detect([im for _, im in frames]))
     if progress:
         progress(0.5, "detect")
-    chk = Checker(frames, sc)
+    chk = Checker(frames, sc, dc)
     events = detect_events(frames, dets, sc, chk)
+    dc.save()
     if progress:
         progress(0.9, "verify")
     by_t = {round(t_, 3): im for t_, im in frames}
@@ -359,4 +482,5 @@ def run(path, progress=None) -> VideoAnalysis:
         progress(1.0, "report")
     return VideoAnalysis(verdict="violation" if violations else "no_violation", violations=violations,
                          duration_sec=round(vi.duration, 2), processing_sec=round(time.perf_counter() - started, 2),
-                         engine=f"rules+{vlm.DEFAULT_MODEL}+vlm_calls={chk.calls}")
+                         engine=f"rules+{vlm.DEFAULT_MODEL}+vlm_calls={chk.calls}"
+                         f"+asked={','.join(f'{a}:{b}' for a, b in sorted(chk.by_kind.items()))}")

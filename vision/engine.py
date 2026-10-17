@@ -33,7 +33,8 @@ BAG_SCORE = 0.55
 BAGS = ("handbag", "backpack", "suitcase")
 RETURN_MAX_S = 1.0  # a return to the post this short does not end leaving
 LEAVE_LOOKBACK_S = 12.0
-DEPTH_BAND = 0.06  # of the frame height: feet this close in the image = the same distance from the camera
+DEPTH_BAND = 0.3  # of a person's box height: feet this close in the image = the same distance from the camera
+#                   (relative to people, not the frame: a closer or farther camera scales both)
 
 Q_SCREEN = ("This is a close-up of a laptop. Does the laptop screen show an open working application (for example a "
             "spreadsheet, a table or a program window)? Answer no if the screen shows a lock screen, a wallpaper "
@@ -228,7 +229,7 @@ def _iou(a, b) -> float:
 def room_persons(dets, sc: Scene, H: int) -> list[list[people.Det]]:
     """People inside the cash room: confident, deduplicated, and standing/sitting at or below the desk line.
     Figures seen through the glass wall are further away, so their box ends above the desk top."""
-    line = (sc.desk[1] if sc.desk else 0.42 * H) - 0.03 * H
+    line = (sc.desk[1] - 0.03 * H) if sc.desk else 0.0  # no desk found (new camera): do not drop anybody
     out = []
     for ds in dets:
         ps = sorted([d for d in ds if d.label == "person" and d.score >= 0.5], key=lambda d: -d.score)
@@ -259,7 +260,7 @@ class Tracks:
     depth: float | None  # the cashier's box bottom (pixels)
 
 
-def cashier_depth(at_work, H: int, anchor=None) -> float | None:
+def cashier_depth(at_work, band: float, anchor=None) -> float | None:
     """Box bottom (pixels) of the cashier = her depth in the image.
 
     People at the workplace form depth groups (similar box bottoms): the cashier's and the client's across the desk.
@@ -269,7 +270,7 @@ def cashier_depth(at_work, H: int, anchor=None) -> float | None:
     people_ = [p for ps in at_work for p in ps]
     if not people_:
         return None
-    w = DEPTH_BAND * H / 2
+    w = band / 2
     left, groups = sorted(p.bottom for p in people_), []
     while left and len(groups) < 3:
         best = max(left, key=lambda b: sum(abs(x - b) <= w for x in left))
@@ -291,10 +292,10 @@ def cashier_depth(at_work, H: int, anchor=None) -> float | None:
     return max(groups, key=lambda g: sum(abs(x - g) <= w for x in solo))
 
 
-def cashier_track(at_work, depth: float | None, H: int) -> list:
+def cashier_track(at_work, depth: float | None, band: float) -> list:
     """The cashier's box per frame: found by her depth, then followed to the nearest box frame to frame (she may move
     her chair or stand up). A jump to another depth (the client when she has left) is not followed."""
-    out, last, band = [], None, DEPTH_BAND * H
+    out, last = [], None
     for ps in at_work:
         b = None
         if ps and depth is not None:
@@ -313,22 +314,25 @@ def cashier_track(at_work, depth: float | None, H: int) -> list:
 
 def tracks(frames, dets, sc: Scene) -> Tracks:
     H = frames[0][1].height
-    work = _grow(_union(sc.desk, sc.laptop, sc.safe), 0.15)
+    W = frames[0][1].width
+    work = _grow(_union(sc.desk, sc.laptop, sc.safe), 0.15) or [0.0, 0.0, float(W), float(H)]  # none found: all
     safe_zone = _grow(sc.safe, 0.25)
     desk_top = sc.desk[1] if sc.desk else 0.45 * H
     persons = room_persons(dets, sc, H)
     at_work = [[p for p in ps if _ioa(p.box, work) >= 0.25] for ps in persons]
     # The cashier's side, without assuming a camera angle: people at the same depth as the cashier (box bottom within
-    # DEPTH_BAND of the frame height) are on her side of the desk; a client across the desk stands at another depth
+    # DEPTH_BAND of a person's height) are on her side of the desk; a client across the desk stands at another depth
     # whichever way the camera looks (behind the cashier, in front of her or from the side). See cashier_depth.
     post = _union(sc.laptop, sc.safe)
-    depth = cashier_depth(at_work, H, ((post[0] + post[2]) / 2, (post[1] + post[3]) / 2) if post else None)
+    hs_ = sorted(p.height for ps in at_work for p in ps)
+    band = max(0.03 * H, DEPTH_BAND * hs_[len(hs_) // 2]) if hs_ else 0.06 * H
+    depth = cashier_depth(at_work, band, ((post[0] + post[2]) / 2, (post[1] + post[3]) / 2) if post else None)
     cashier_below = depth is not None and depth > desk_top + 0.08 * H  # informational: camera behind the cashier
 
-    cashier = cashier_track(at_work, depth, H)
+    cashier = cashier_track(at_work, depth, band)
 
     def cashier_side(p, c) -> bool:
-        return c is not None and abs(p.bottom - c.bottom) <= DEPTH_BAND * H
+        return c is not None and abs(p.bottom - c.bottom) <= band
 
     near_cash = [[p for p in ps if cashier_side(p, c)] for ps, c in zip(at_work, cashier, strict=True)]
     behind = [[p for p in ps if not cashier_side(p, c)] for ps, c in zip(at_work, cashier, strict=True)]
@@ -429,6 +433,9 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
                                 "инкассаторская сумка", 0.8))
         if chk.safe_open(j) and not has("T4"):
             events.append(Event("T4", t_leave, [t[j]], "кассир покидает рабочее место, дверца сейфа открыта", 0.8))
+        if not has("T11") and chk.items_on_desk(j) and chk.items_on_desk(min(n - 1, j + k(1.0))):
+            events.append(Event("T11", t_leave, [t[j]], "кассир покидает рабочее место, на столе остаются личные "
+                                "вещи (сумка, верхняя одежда)", 0.6))
 
     # 2) a client comes to the desk while cash already lies open on it (checked for every client, not the first)
     for i in client_arrivals(tr):
@@ -542,6 +549,10 @@ def run(path, progress=None) -> VideoAnalysis:
     if progress:
         progress(0.1, "decode")
     sc = dc.get("scene", lambda: find_scene(frames))
+    # another camera / room: a missing object is searched once more by a plainer description
+    for key, alt in (("desk", "table"), ("laptop", "monitor"), ("safe", "cabinet")):
+        if getattr(sc, key) is None:
+            setattr(sc, key, dc.get(("scene_extra", alt), lambda alt=alt: find_object(frames, alt)))
     sc.machine = dc.get(("scene_extra", "machine"), lambda: find_object(frames, "machine"))
     if progress:
         progress(0.2, "scene")

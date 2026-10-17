@@ -44,6 +44,12 @@ for attempt in 1 2 3 4 5; do
   if ! git pull -q --rebase --autostash 2>/dev/null; then
     conflicts=$(git diff --name-only --diff-filter=U 2>/dev/null)
     git rebase --abort 2>/dev/null
+    if [ -z "$conflicts" ]; then
+      # not a conflict: network / auth hiccup — retry a couple of times before giving up
+      [ "$attempt" -lt 3 ] && { sleep 3; continue; }
+      echo "✖ git pull не прошёл (сеть или доступ, конфликтов нет). Коммит сохранён локально — повтори scripts/checkpoint.sh позже."
+      exit 1
+    fi
     echo "✖ Конфликт с изменениями команды. Твой коммит сохранён локально, репо в чистом состоянии."
     for f in $conflicts; do echo "   $f → зона $(scripts/zones.sh --owner "$f")"; done
     echo "→ Файл твоей зоны: git pull --rebase → поправь → git add <файл> → git rebase --continue → scripts/checkpoint.sh \"merge fix\""

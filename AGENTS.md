@@ -10,6 +10,8 @@
 - Строка «⏱ …» в начале каждого запроса показывает час из 24, время до фриза, твою зону и что делает напарник.
 
 ## Стек и команды
+Для текущего **видео-кейса**: `uv run python -m vision.evaluate` (чистая оценка), `--cache` только для разработки; `uv run python -m service.smoke` (5 разных mock-видео), `--real --videos data/raw/open/videos` (real API на Mac); `scripts/smoke.sh --local` (свежий checkout). Скиллы autopilot/ship содержат приоритетную видео-ветку. Команды `app.cli` ниже — вспомогательный табличный набор, они не улучшают качество видеоанализа.
+
 Python 3.12 · uv · pandas · scikit-learn · LightGBM · CatBoost · XGBoost · Optuna · SHAP · matplotlib/plotly · FastAPI (демо) · `openai` (OpenAI-совместимый клиент, необязателен)
 - установка `uv sync` (на macOS для LightGBM/XGBoost нужен `brew install libomp`) · ноутбуки `notebooks/` (ядро `.venv`) · Colab: `scripts/colab.sh`
 - **контракт задачи:** `task.toml` (target, id, метрика, валидация, формат сабмита) — меняет только лид

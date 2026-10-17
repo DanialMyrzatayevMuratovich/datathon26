@@ -36,7 +36,7 @@ class _F:
 def layout(vid):
     path = video_path(vid)
     frames = sample(path, fps=engine.FPS)
-    dc = DevCache(path)
+    dc = DevCache(path, fps=engine.FPS)
     sc = dc.get("scene", lambda: engine.find_scene(frames))
     tr = engine.tracks(frames, dc.get("dets", lambda: None), sc)
     return frames, dc, sc, tr

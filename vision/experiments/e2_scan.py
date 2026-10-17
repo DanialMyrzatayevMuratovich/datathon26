@@ -46,8 +46,12 @@ def scene_box(dc: DevCache, frames, key: str):
 
 def scan(vid: str, name: str, every: float, t0: float, t1: float, sheet: bool = True) -> list:
     path = video_path(vid)
-    frames = sample(path, fps=engine.FPS)
-    dc = DevCache(path)
+    with sample(path, fps=engine.FPS) as frames:
+        return scan_frames(path, frames, vid, name, every, t0, t1, sheet)
+
+
+def scan_frames(path, frames, vid, name, every, t0, t1, sheet):
+    dc = DevCache(path, fps=engine.FPS)
     key, q, margin = QUESTIONS[name]
     box = scene_box(dc, frames, key)
     if box is None:
@@ -56,9 +60,11 @@ def scan(vid: str, name: str, every: float, t0: float, t1: float, sheet: bool = 
         return []
     step = max(1, round(every * engine.FPS))
     crops, rows = [], []
-    for t, im in frames[::step]:
+    for i in range(0, len(frames), step):
+        t = frames.timestamps[i]
         if not t0 <= t <= t1:
             continue
+        im = frames[i][1]
         c = crop(im, box, margin=margin)
         ans = dc.vlm(c, q, lambda c=c: vlm.yes_no([c], q)[0])
         rows.append((t, ans))

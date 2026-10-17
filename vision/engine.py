@@ -429,7 +429,8 @@ def client_arrivals(tr: Tracks) -> list[int]:
         if new and any(sit[e:e + k(4.0)]) and not (out and s - out[-1] < k(3.0)):
             out.append(s)
     for s, _e in _runs(tr.client_here, True, k(2.0)):
-        if s >= k(2.0) and not any(abs(s - o) < k(3.0) for o in out):
+        if (s >= k(2.0) and not any(tr.client_here[s - k(2.0):s])
+                and not any(abs(s - o) < k(3.0) for o in out)):
             out.append(s)
     return sorted(out)
 

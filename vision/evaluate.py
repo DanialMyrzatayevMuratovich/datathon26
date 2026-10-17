@@ -12,6 +12,7 @@ import argparse
 import hashlib
 import json
 import os
+import platform
 import secrets
 import subprocess
 import time
@@ -19,7 +20,7 @@ from datetime import datetime
 from pathlib import Path
 
 from service.quality import audit, labels, video_id
-from vision.devcache import model_identity
+from vision.devcache import _backend_versions, model_content_identity
 from vision.labels import DUPLICATES  # noqa: F401 - historical experiment imports
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -90,8 +91,18 @@ def sha256(path: Path) -> str:
 
 def source_identity() -> dict:
     paths = [*sorted((ROOT / "vision").rglob("*.py")), ROOT / "service/quality.py",
-             ROOT / "uv.lock", ROOT / "scripts/download_models.sh"]
+             ROOT / "uv.lock", ROOT / "scripts/download_models.sh", ROOT / "contract/schemas.py",
+             ROOT / "data/laws/rules_catalog.json"]
     return {p.relative_to(ROOT).as_posix(): sha256(p) for p in paths if p.is_file()}
+
+
+def runtime_identity() -> dict:
+    import torch
+    return {"python": platform.python_version(), "system": platform.system(), "machine": platform.machine(),
+            "packages": _backend_versions(), "mps": torch.backends.mps.is_available(),
+            "ffmpeg": subprocess.check_output(["ffmpeg", "-version"], text=True).splitlines()[0],
+            "vlm_model": os.getenv("VLM_MODEL", "qwen3-vl-4b-instruct-mlx-4bit"),
+            "threads": os.getenv("DT_THREADS", "2")}
 
 
 def configure(cache: bool) -> None:
@@ -121,7 +132,8 @@ def run(only: list[str] | None, *, cache: bool = False) -> Path:
         "subset": bool(only), "expected": sorted(gt), "requested": vids,
         "labels_sha256": sha256(LABELS), "source_sha256": source_identity(),
         "video_sha256": {vid: sha256(path) for vid, path in paths.items()},
-        "models": [model_identity(name) for name in (
+        "runtime": runtime_identity(),
+        "models": [model_content_identity(name) for name in (
             os.getenv("VLM_MODEL", "qwen3-vl-4b-instruct-mlx-4bit"), "rtdetr-v2-r50", "grounding-dino-tiny")],
         "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
         "timing_note": "Cached timings are not inference/SLA measurements" if cache else "Uncached local inference",
@@ -164,7 +176,7 @@ def compare(a: str, b: str) -> int:
                     or manifest["subset"] or manifest["completed"] != manifest["expected"]
                     or sha256(RUNS / name / "predictions.json") != manifest["predictions_sha256"]):
                 raise ValueError("Need complete, uncached real runs with intact predictions")
-        for field in ("labels_sha256", "source_sha256", "video_sha256", "models", "expected"):
+        for field in ("labels_sha256", "source_sha256", "video_sha256", "models", "runtime", "expected"):
             if ma[field] != mb[field]:
                 raise ValueError(f"Run provenance differs: {field}")
     except (OSError, KeyError, ValueError) as exc:
@@ -183,7 +195,7 @@ def compare(a: str, b: str) -> int:
             continue
         key = lambda r: [(v["type_id"], v["timecode_sec"], v["description"]) for v in r["violations"]]  # noqa: E731
         if x["verdict"] != y["verdict"] or key(x) != key(y):
-            diffs.append(f"{vid}: {x['verdict']} {key(x)}  ≠  {y['verdict']} {key(y)}")
+            diffs.append(f"{vid}: verdict, type, timestamp or description differs (content kept local)")
     print("✔ прогоны совпадают полностью" if not diffs else "✖ расхождения:\n" + "\n".join(diffs))
     return 1 if diffs else 0
 

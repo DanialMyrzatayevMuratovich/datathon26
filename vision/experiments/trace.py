@@ -26,10 +26,14 @@ def main() -> None:
     ap.add_argument("--to", dest="t1", type=float, default=1e9)
     a = ap.parse_args()
     path = video_path(a.video)
-    frames = sample(path, fps=engine.FPS)
-    dc = DevCache(path)
+    with sample(path, fps=engine.FPS) as frames:
+        trace(path, frames, a)
+
+
+def trace(path, frames, a):
+    dc = DevCache(path, fps=engine.FPS)
     sc = dc.get("scene", lambda: engine.find_scene(frames))
-    dets = dc.get("dets", lambda: people.detect([im for _, im in frames]))
+    dets = dc.get("dets", lambda: people.detect(frames.images()))
     dc.save()
     H = frames[0][1].height
     tr = engine.tracks(frames, dets, sc)

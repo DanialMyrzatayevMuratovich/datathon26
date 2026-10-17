@@ -69,7 +69,7 @@
 
 ## 9. Протокол проверки и двойной прогон
 1. **Детерминизм**: фиксированные моменты кадров, сиды, VLM с температурой 0, зафиксированные версии и ревизии весов, все пороги в одном конфиге `vision/config.py`.
-2. **Прогон 1**: `uv run python -m vision.evaluate --videos data/raw/open/videos --labels data/annotations.csv` → `runs/eval/<run_id>/`: `predictions.json` (по каждому видео), `metrics.json`, `report.md` (ошибки с кадрами).
+2. **Прогон 1**: `uv run python -m vision.evaluate --videos data/raw/open/videos --labels data/annotations.csv` → `runs/eval/<run_id>/`: `predictions.json` (локальные результаты без base64 кадров), `metrics.json` (coverage, binary, совместные type+time), `labels.json` (метки без описаний), `manifest.json` (источники, модели, runtime, cache). Без `--cache` кэш принудительно отключён. `report.md` и отчёт с кадрами эта команда не создаёт.
 3. **Прогон 2**: та же команда ещё раз → `vision.evaluate --compare <run1> <run2>`: вердикты, типы и таймкоды должны совпасть **полностью**, тексты описаний — тоже. Любое расхождение = недетерминизм, ищем и чиним до перехода дальше.
 4. **Прогон через сервис**: те же 5 видео через API Асылбека → сравнение с прогоном 1 (результат API = результат пайплайна).
 5. **Разметка тоже проверяется**: люди пересматривают Х-1, Х-24, Х-44, Х-13, Х-17; правки — в `data/annotations.csv` отдельным коммитом, метрики пересчитываются.

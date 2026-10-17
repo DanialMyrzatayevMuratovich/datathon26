@@ -3,6 +3,7 @@
 import io
 import json
 import math
+import os
 import struct
 import subprocess
 import tempfile
@@ -121,7 +122,8 @@ def _read_exact(stream, size):
     return parts
 
 
-def sample(path: str | Path, fps: float = 2.0, max_side: int | None = None) -> SampledFrames:
+def sample(path: str | Path, fps: float = 2.0, max_side: int | None = None,
+           *, max_bytes: int | None = None) -> SampledFrames:
     """Every 1/fps seconds; same ffmpeg pixels, bounded decoded RAM, original detail.
 
     PNG chunks are parsed by length, not searched for a signature that might also
@@ -132,6 +134,11 @@ def sample(path: str | Path, fps: float = 2.0, max_side: int | None = None) -> S
     if max_side is not None and max_side <= 0:
         raise ValueError("max_side must be positive")
     vi = info(path)
+    budget = max_bytes if max_bytes is not None else int(os.getenv("DT_FRAME_SCRATCH_BYTES", str(2 * 1024**3)))
+    if budget <= 0:
+        raise ValueError("Frame scratch budget must be positive")
+    if vi.width * vi.height > 16_777_216:
+        raise ValueError("Video frame exceeds the 16-megapixel decode budget")
     vf = f"fps={fps}"
     if max_side:
         vf += f",scale='if(gt(iw,ih),min({max_side},iw),-2)':'if(gt(iw,ih),-2,min({max_side},ih))'"
@@ -148,12 +155,16 @@ def sample(path: str | Path, fps: float = 2.0, max_side: int | None = None) -> S
                     if signature != b"\x89PNG\r\n\x1a\n":
                         raise ValueError("Invalid ffmpeg PNG stream")
                     start = out._file.tell()
+                    if start + 8 > budget:
+                        raise ValueError("Frame scratch budget exceeded")
                     out._file.write(signature)
                     while True:
                         header = _read_exact(proc.stdout, 8)
                         size = struct.unpack(">I", header[:4])[0]
                         if size > 64 * 1024 * 1024:
                             raise ValueError("Unexpectedly large PNG chunk")
+                        if out._file.tell() + 8 + size + 4 > budget:
+                            raise ValueError("Frame scratch budget exceeded")
                         out._file.write(header)
                         out._file.write(_read_exact(proc.stdout, size + 4))  # data and CRC
                         if header[4:] == b"IEND":

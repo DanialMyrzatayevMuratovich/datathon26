@@ -5,6 +5,7 @@ import json
 import os
 import shutil
 import subprocess
+from types import SimpleNamespace
 
 import pytest
 from PIL import Image
@@ -36,6 +37,8 @@ def test_lossless_sample_is_lazy_and_matches_ffmpeg(tmp_path):
         with pytest.raises(IndexError):
             sampled[-9]
     assert sampled._file.closed
+    with pytest.raises(ValueError, match="scratch budget"):
+        frames.sample(video, max_bytes=16)
 
 
 def test_bad_sampling_and_truncated_stream():
@@ -90,6 +93,20 @@ def test_stale_heat_marker_fails_without_resuming(tmp_path, monkeypatch):
     assert hot.exists()
 
 
+def test_model_content_identity_is_portable_and_invalidates_on_change(tmp_path, monkeypatch):
+    monkeypatch.setattr(devcache, "ROOT", tmp_path / "vision")
+    monkeypatch.setenv("MODELS_DIR", str(tmp_path / "models"))
+    model = tmp_path / "models/example"
+    model.mkdir(parents=True)
+    weights = model / "model.safetensors"
+    weights.write_bytes(b"fake weights")
+    a = devcache.model_content_identity("example")
+    os.utime(weights, (1, 1))
+    assert devcache.model_content_identity("example") == a
+    weights.write_bytes(b"new weights!")
+    assert devcache.model_content_identity("example") != a
+
+
 def test_live_heat_wait_is_bounded_and_clear_resumes(tmp_path, monkeypatch):
     hot = tmp_path / ".hot"
     hot.write_text("123")
@@ -126,7 +143,7 @@ def test_final_compare_rejects_legacy_cached_partial_and_changed_predictions(tmp
     assert evaluate.compare("a", "b") == 2
     manifest = {"status": "complete", "engine": "real", "cache_enabled": False, "subset": False,
                 "expected": ["X-1"], "completed": ["X-1"], "labels_sha256": "labels", "source_sha256": {},
-                "models": [], "video_sha256": {"X-1": "video"}}
+                "models": [], "runtime": {}, "video_sha256": {"X-1": "video"}}
     for name in ("a", "b"):
         directory = tmp_path / name
         directory.mkdir()
@@ -142,3 +159,13 @@ def test_final_compare_rejects_legacy_cached_partial_and_changed_predictions(tmp
     path.write_text(json.dumps(manifest))
     (tmp_path / "b/predictions.json").write_text("{}")
     assert evaluate.compare("a", "b") == 2
+
+
+def test_client_detection_dropout_is_not_a_new_arrival():
+    from vision.engine import client_arrivals
+    person = SimpleNamespace(height=100)
+    def track(gap):
+        flags = [True] * 10 + [False] * gap + [True] * 10
+        return SimpleNamespace(client_here=flags, behind=[[person] if present else [] for present in flags])
+    assert client_arrivals(track(1)) == []  # half-second lost detection
+    assert client_arrivals(track(4)) == [14]  # genuinely empty for two seconds

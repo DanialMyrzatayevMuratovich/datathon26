@@ -1,0 +1,138 @@
+{
+  "purpose": "Git integrity and local DOCX/CSV consistency audit; not a model-quality or video-ground-truth evaluation",
+  "checked_head": "5bd4a8f63ad20ab84c83413fd0a70d1ddd7e5e22",
+  "checked_at_local": "2026-10-18T02:25:00+05:00",
+  "identity_scope": "reachable commits whose author or committer is isk0nka-dot",
+  "git": {
+    "reachable_contributor_commits": 3,
+    "all_single_parent_and_in_main": true,
+    "production_code_or_dependencies_changed": false,
+    "annotations_csv_changed": false,
+    "ahead": 0,
+    "behind": 0,
+    "unmerged_index_entries": 0,
+    "unresolved_conflict_markers": 0,
+    "fsck_connectivity_exit_code": 0,
+    "dangling_commits": 4,
+    "dangling_commit_kind": "asylbek autostash; not evidence of lost teammate work",
+    "local_remote_reflog_entries_checked": 44,
+    "forced_updates_observed_in_local_reflog": 0,
+    "secret_scan_all_exit_code": 0
+  },
+  "github_event_attribution": {
+    "api_read_succeeded": true,
+    "events_returned": 4,
+    "push_events_with_actor_isk0nka_dot": 0,
+    "can_confirm_who_pushed_other_authors_commits": false,
+    "note": "Missing push events are not proof that no such actions happened"
+  },
+  "commits": [
+    {
+      "commit": "befef1e7002b50b2ccaca5d422836f34b9b73645",
+      "parent": "88d7abf",
+      "added": ["data/dataset/datathon26_markup_v5.docx"],
+      "deleted": [],
+      "bytes": 43477,
+      "sha256": "909541b747c93dc04cf2148232dde2af127bc5ccae3cfcb2d0ecf5cd78ac4a07"
+    },
+    {
+      "commit": "4d4c0b752f84f2422bc0e037cb2bbf0ca013ed12",
+      "parent": "c454916",
+      "added": ["data/dataset/datathon26_markup_v4.docx"],
+      "deleted": ["data/dataset/datathon26_markup_v5.docx"],
+      "bytes": 46065,
+      "sha256": "b8aaa31956a90bc9cc30efd219e4a1f04b7893d566a917eec59778bcb0941725"
+    },
+    {
+      "commit": "67639152f028d536405669eb375a01cfaeb366e4",
+      "parent": "4f91f03",
+      "added": ["data/dataset/datathon26_markup_v4_2.docx"],
+      "deleted": ["data/dataset/datathon26_markup_v4.docx"],
+      "bytes": 42643,
+      "sha256": "1652958e6a213393d89bc921895cb2c7ff3e632cae25de8a4c1d65bc9886a88c"
+    }
+  ],
+  "docx_method": "git show commit:path -> in-memory ZIP -> ElementTree tables; normalized text-cell comparison, no scene text emitted",
+  "each_docx": {
+    "main_rows": 42,
+    "violation_rows": 22,
+    "no_violation_rows": 20,
+    "confidence_high": 22,
+    "confidence_blank": 20,
+    "verification_column_blank": 42,
+    "media_files": 0,
+    "embedded_files": 0,
+    "macro_parts": 0,
+    "external_relationships": 0,
+    "ole_or_altchunk_objects": 0,
+    "active_field_instructions": 0,
+    "xml_and_rels_parts_scanned": 12,
+    "secret_scan_patterns": 13,
+    "secret_hits_raw_xml": 0,
+    "secret_hits_decoded_joined_xml_text": 0
+  },
+  "v5_to_v4": {
+    "changed_main_rows": 11,
+    "changed_main_cells": 13,
+    "type_changes": [
+      {"video": "X-24", "before": "T3", "after": "T11"},
+      {"video": "X-47", "before": "T9", "after": "T2"}
+    ],
+    "verdict_time_confidence_changes": 0,
+    "other_cell_changes": {"observation_text": 4, "rule_and_clause": 5, "camera_angle": 2},
+    "non_main_table_cell_changes": 0
+  },
+  "v4_to_v4_2": {
+    "changed_main_rows": 38,
+    "changed_main_cells": 44,
+    "verdict_type_id_time_confidence_changes": 0,
+    "cell_changes": {"observation_text": 37, "rule_and_clause": 4, "camera_angle": 2, "type_display_name": 1},
+    "non_main_table_cell_changes": 0
+  },
+  "v4_and_v4_2_summary_disagreements_with_their_main_table": [
+    {"type_id": "T2", "summary_omits": ["X-47"]},
+    {"type_id": "T3", "summary_incorrectly_includes": ["X-24"]},
+    {"type_id": "T9", "summary_incorrectly_includes": ["X-47"]},
+    {"type_id": "T11", "summary_omits": ["X-24"]}
+  ],
+  "working_annotations": {
+    "path": "data/annotations.csv",
+    "sha256": "c15aab36c786d9fd3111018952ce0b2cd89e51ff3b133d7441e5ea5f5904148f",
+    "last_changed_by_commit": "88d7abf",
+    "last_changed_by": "Danial",
+    "row_count": 42,
+    "unique_videos_after_aliases": 40,
+    "positive_videos": 21,
+    "negative_videos": 19,
+    "events": 22,
+    "duplicate_aliases_from_repo": {"X-47": "X-4", "X-48": "X-5"},
+    "all_docx_verdict_time_confidence_differences_from_csv": 0,
+    "v5_type_differences_from_csv": [{"video": "X-24", "docx": "T3", "csv": "T11"}],
+    "v4_and_v4_2_type_differences_from_csv": [{"video": "X-47", "timecode_sec": 68, "docx": "T2", "csv": "T9"}],
+    "canonical_X4_events": [{"type_id": "T2", "timecode_sec": 57}, {"type_id": "T9", "timecode_sec": 68}],
+    "changed_by_this_audit": false
+  },
+  "duplicate_file_verification": {
+    "method": "SHA256 of four local MOV files, no decoding or viewing",
+    "X-4_and_X-47": "5385be9420e6a70547d6bcfd0b13d60f9c0738877645afa277d09550a96b8445",
+    "X-5_and_X-48": "1f5840bff58f298e89c4afa00cb1c18f6dafc5c4096c251d9b507604ebefe906",
+    "both_pairs_identical": true
+  },
+  "decision": {
+    "revert_code": false,
+    "delete_documents": false,
+    "reason": "No code overwritten or executable duplicate introduced; preserve manual sources and mark unresolved label/summary conflicts",
+    "runtime_reads_docx": false,
+    "direct_evidence_these_commits_caused_accuracy_drop": false,
+    "requires_local_human_review": "X-47/X-4: type and identity of event at 68s before changing CSV; Word summary is stale"
+  },
+  "limitations": [
+    "Author/committer metadata is not proof of the physical writer or authenticated pusher",
+    "No visibility into uncommitted work on other laptops or unreachable server history",
+    "No video frames viewed; only four local files were hashed to verify both known duplicate pairs",
+    "Text comparison does not validate observation truth, legal interpretation or document formatting",
+    "Blank verification columns do not prove that no human review occurred",
+    "Structural and secret-pattern checks are not antivirus or proof that every possible secret is absent",
+    "No models loaded and no claim of changed accuracy, speed or independent generalization"
+  ]
+}

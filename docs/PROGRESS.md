@@ -49,3 +49,4 @@
 - 23:44 · bigali · Бигали · docs: SUBMISSION on jury-style real API run 2214-5d08 (time, memory, reproducibility), T13 interpretation (R4, R8, R9) · тесты: pass
 - 00:17 · asylbek · Асылбек · feat: audit candidate regressions and define bounded generalization experiment (R7,R11) · тесты: pass
 - 00:19 · danial · Danial · ml: E4-E8 attempts on the 6 misses (few-shot door, analyst pass 8B, SSIM door, visitor voting, key double zoom) — none passes without false alarms; documented (R7) · тесты: pass
+- 00:24 · bigali · Бигали · docs: bigali filming plan as 7 paired clips with dev/closed split, demo file task (R11) · тесты: pass

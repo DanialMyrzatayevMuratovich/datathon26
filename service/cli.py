@@ -73,9 +73,34 @@ def check_one(url: str, key: str, path: Path, strict: bool = False) -> dict:
                 "violations": len(public.get("violations", [])),
                 "evidence_frames": sum(len(v["evidence_frames"]) for v in public.get("violations", [])),
                 "engine": (details.get("analysis") or {}).get("engine"), "error": details.get("error"),
+                "events": [{"type_id": v["type_id"], "timecode_sec": v["timecode_sec"]}
+                           for v in (details.get("analysis") or {}).get("violations", [])],
             }
         time.sleep(0.25)
     return {"job_id": job_id, "status": "timeout", "elapsed_sec": round(time.monotonic() - started, 3)}
+
+
+def health_engine(url: str) -> str:
+    with opener().open(url.rstrip("/") + "/api/v1/health", timeout=10) as response:
+        health = json.load(response)
+    if health.get("ok") is not True or health.get("engine") not in {"mock", "real"}:
+        raise ValueError("Service health is not ready")
+    return health["engine"]
+
+
+def passed(report: dict) -> bool:
+    if any(not check["ok"] for check in report["auth_checks"]):
+        return False
+    if len(report["results"]) != report["count"]:
+        return False
+    for row in report["results"]:
+        if row["status"] != "done" or row["elapsed_sec"] >= 300:
+            return False
+        if report.get("expected_engine") == "real" and (not row.get("engine") or row["engine"] == "mock"):
+            return False
+        if report.get("expected_engine") == "mock" and row.get("engine") != "mock":
+            return False
+    return True
 
 
 def main() -> None:
@@ -86,12 +111,13 @@ def main() -> None:
     doctor.add_argument("--engine", choices=["mock", "real"])
     doctor.add_argument("--require-ui", action="store_true")
     check = sub.add_parser("check", help="Upload videos concurrently and wait for results")
-    check.add_argument("video", type=Path, nargs="?")
+    check.add_argument("videos", type=Path, nargs="*", help="One video repeated, or --count distinct input files")
     check.add_argument("--synthetic", action="store_true", help="Generate a 2-second test pattern with FFmpeg")
     check.add_argument("--url", default="http://127.0.0.1:8000")
     check.add_argument("--count", type=int, default=5)
     check.add_argument("--report", type=Path)
     check.add_argument("--strict", action="store_true", help="Validate exact public fields, JPEG evidence and HTTP 401")
+    check.add_argument("--expect-engine", choices=["mock", "real"], help="Reject the wrong server/analysis engine")
     args = parser.parse_args()
     if args.command == "init":
         init_key()
@@ -117,37 +143,48 @@ def main() -> None:
         parser.error("Use an HTTP(S) service URL without credentials, query or fragment")
     if parsed.scheme == "http" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
         parser.error("Use HTTPS when sending an API key to a remote host")
-    if bool(args.video) == args.synthetic:
-        parser.error("Choose a video path OR --synthetic")
+    if bool(args.videos) == args.synthetic:
+        parser.error("Choose video paths OR --synthetic")
+    if len(args.videos) > 1 and len(args.videos) != args.count:
+        parser.error("With multiple files, --count must equal the number of files")
+    if args.expect_engine:
+        try:
+            current_engine = health_engine(args.url)
+        except (OSError, ValueError, AttributeError) as exc:
+            parser.error(f"Engine preflight failed ({type(exc).__name__})")
+        if current_engine != args.expect_engine:
+            parser.error(f"Expected {args.expect_engine} server, got {current_engine}; no videos uploaded")
     with tempfile.TemporaryDirectory(prefix="forte-video-check-") as temporary:
-        path = args.video
+        paths = args.videos
         if args.synthetic:
             path = Path(temporary) / "check.mov"
             subprocess.run([
                 "ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=320x240:rate=10",
                 "-t", "2", "-an", "-c:v", "mpeg4", "-y", str(path),
             ], check=True, timeout=30)
-        if not path.is_file() or path.stat().st_size > 200 * 1024 * 1024:
+            paths = [path]
+        if any(not path.is_file() or path.stat().st_size > 200 * 1024 * 1024 for path in paths):
             parser.error("Video must exist and be at most 200 MiB")
         auth_checks = check_auth(args.url.rstrip("/"), key) if args.strict else []
         with concurrent.futures.ThreadPoolExecutor(max_workers=args.count) as pool:
-            futures = [pool.submit(check_one, args.url.rstrip("/"), key, path, args.strict) for _ in range(args.count)]
+            inputs = paths if len(paths) > 1 else paths * args.count
+            futures = [pool.submit(check_one, args.url.rstrip("/"), key, path, args.strict) for path in inputs]
             rows = []
-            for future in futures:
+            for i, future in enumerate(futures):
                 try:
-                    rows.append(future.result())
+                    row = future.result()
                 except (OSError, ValueError, KeyError) as exc:
-                    rows.append({"status": "request_failed", "error_type": type(exc).__name__})
+                    row = {"status": "request_failed", "error_type": type(exc).__name__}
+                row.update({"input_index": i, "input_name": inputs[i].name})
+                rows.append(row)
         report = {"synthetic": args.synthetic, "strict": args.strict, "count": args.count,
-                  "auth_checks": auth_checks, "results": rows}
+                  "expected_engine": args.expect_engine, "auth_checks": auth_checks, "results": rows}
         rendered = json.dumps(report, ensure_ascii=False, indent=2)
         print(rendered)
         if args.report:
             args.report.parent.mkdir(parents=True, exist_ok=True)
             args.report.write_text(rendered + "\n", encoding="utf-8")
-        if any(not check["ok"] for check in auth_checks) or any(
-            row["status"] != "done" or row["elapsed_sec"] >= 300 for row in rows
-        ):
+        if not passed(report):
             raise SystemExit(1)
 
 

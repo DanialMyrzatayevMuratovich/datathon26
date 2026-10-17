@@ -6,3 +6,4 @@
 - 23:52 · asylbek · Асылбек · chore: add asylbek to team · тесты: pass
 - 10:23 · danial · Danial · kickoff: one stream per member, supports a team of 3 · тесты: pass
 - 12:09 · danial · Danial · docs: ForteBank case (video cash-discipline service) in TASK.md · тесты: pass
+- 12:49 · danial · Danial · data: annotations of all 42 videos, 12 violation types catalog · тесты: pass

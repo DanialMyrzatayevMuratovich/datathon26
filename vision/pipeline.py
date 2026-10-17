@@ -40,7 +40,7 @@ def rules_for(type_id: str) -> tuple[str, list[RuleRef], str]:
 
 def describe_rule(rules: list[RuleRef]) -> str:
     r = rules[0]
-    verb = "Нарушен" if r.basis == "direct" else "Может противоречить"
+    verb = "Признаки возможного нарушения" if r.basis == "direct" else "Может противоречить"
     short = r.approved.replace("постановление Правления Национального Банка Республики Казахстан", "пост. НБРК")
     return f"{verb} {r.ref} Правил ({short})."
 

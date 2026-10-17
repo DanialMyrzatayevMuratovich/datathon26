@@ -44,3 +44,4 @@
 - 23:01 · danial · Danial · ml: jury-style check — all 40 through the real API without cache: 34/40 (85%), 0 FP, 40/40 identical to cached run; RAM: 1 worker on 16 GB (R4, R7) · тесты: pass
 - 23:01 · danial · Danial · merge: METRICS keeps asylbek audit note + jury-style API check (R7) · тесты: pass
 - 23:11 · danial · Danial · ml: T13 -> interpretation with full quote (bigali review); E4 few-shot door probe (rejected); GDINO device switch (cpu default) (R7, R8) · тесты: pass
+- 23:34 · asylbek · Асылбек · feat: add evidence-based unseen-scenario checklist and legal guards (R7,R8) · тесты: pass

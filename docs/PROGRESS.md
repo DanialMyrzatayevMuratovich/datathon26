@@ -32,3 +32,4 @@
 - 21:29 · danial · Danial · ml: eval 32/40 (80%), 1 false alarm; cashier tracking, seated-only T4, T9 refinement + bag context, faster checks; METRICS/ARCHITECTURE updated; stale Qwen index handled (R7) · тесты: pass
 - 21:35 · bigali · Бигали · ui: request timeout covers response body, not only headers (R6) · тесты: pass
 - 21:38 · bigali · Бигали · docs: SUBMISSION drafts for architecture, types with status, limitations from run 2123-fb5e (R9) · тесты: pass
+- 21:46 · bigali · Бигали · docs: SUBMISSION README link confirmed by asylbek review (R9) · тесты: pass

@@ -7,3 +7,4 @@
 - 10:23 · danial · Danial · kickoff: one stream per member, supports a team of 3 · тесты: pass
 - 12:09 · danial · Danial · docs: ForteBank case (video cash-discipline service) in TASK.md · тесты: pass
 - 12:49 · danial · Danial · data: annotations of all 42 videos, 12 violation types catalog · тесты: pass
+- 13:20 · danial · Danial · laws: NBRK acts 231/14/48 by points, verified rules catalog for 12 types; review notes, decisions · тесты: pass

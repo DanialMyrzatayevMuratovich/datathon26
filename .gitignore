@@ -47,3 +47,7 @@ scripts/timeline.local.sh
 .playwright-mcp/
 .DS_Store
 *.log
+
+# laws: raw downloads and the big QA dump stay local (rebuild: see docs/LAWS.md)
+data/laws/raw/*.html
+data/laws/bank_law_qa.csv

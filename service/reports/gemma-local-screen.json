@@ -1,0 +1,271 @@
+{
+  "schema_version": 1,
+  "date_local": "2026-10-18",
+  "purpose": "Experimental model capability screen, not video violation accuracy or API SLA",
+  "production_model_changed": false,
+  "fine_tuning_performed": false,
+  "model_weights_sha256": {
+    "gemma-4-e2b-it-qat-q4_0": {
+      "gemma-4-E2B_q4_0-it.gguf": "fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634",
+      "gemma-4-E2B-it-mmproj.gguf": "021059cce659fe7f9170d5599761d7bbaf644b798dab9503aca30dc43e6beb14"
+    },
+    "gemma-4-e4b-it-qat-q4_0": {
+      "gemma-4-E4B_q4_0-it.gguf": "676c35070db6dbe52f93e9c864ee0fba4eddea94b9c875d9cb10daff453fbaee",
+      "gemma-4-E4B-it-mmproj.gguf": "7498a37cb619e55f2fcf87eb931f56e99389ed6d432e4c5c66110694c0d65578"
+    }
+  },
+  "hardware": {
+    "gpu": "RTX3050 Laptop 4GB",
+    "ram_gb": 16,
+    "cpu": "i5-12500H"
+  },
+  "native_runtime": {
+    "backend": "llama.cpp b11715",
+    "gpu_layers": 20,
+    "projector": "CUDA",
+    "image_min_tokens": 560,
+    "image_max_tokens": 560,
+    "context": 4096,
+    "slots": 1,
+    "threads": 2,
+    "temperature": 0,
+    "seed": 0,
+    "output_grammar": "A/B/C/D",
+    "max_output_tokens": 4,
+    "network": "loopback only",
+    "prediction_cache_enabled": false
+  },
+  "e2b_balanced8": {
+    "run_id": "gemma-e2b-awake-20261018",
+    "status": "complete",
+    "videos_complete": 8,
+    "requests": 86,
+    "request_seconds": 253.74999999976717,
+    "request_median_seconds": 2.8985000000102445,
+    "request_max_seconds": 3.734000000054948,
+    "wall_seconds": 847.9220000000205,
+    "wall_note": "Includes DINO/decoding and cooldowns; exploratory machine had other light activity, not controlled API SLA",
+    "per_video": {
+      "X-1": {
+        "windows": 6,
+        "action_counts": {
+          "D": 2,
+          "B": 4
+        },
+        "request_seconds": 17.844000000040978,
+        "median_request_seconds": 2.820499999972526,
+        "video_wall_seconds": 76.262
+      },
+      "X-3": {
+        "windows": 5,
+        "action_counts": {
+          "D": 3,
+          "B": 2
+        },
+        "request_seconds": 14.499999999883585,
+        "median_request_seconds": 2.843999999924563,
+        "video_wall_seconds": 56.542
+      },
+      "X-4": {
+        "windows": 18,
+        "action_counts": {
+          "D": 7,
+          "A": 5,
+          "B": 6
+        },
+        "request_seconds": 55.219999999855645,
+        "median_request_seconds": 2.9535000000032596,
+        "video_wall_seconds": 101.828
+      },
+      "X-5": {
+        "windows": 18,
+        "action_counts": {
+          "D": 12,
+          "B": 5,
+          "A": 1
+        },
+        "request_seconds": 52.18699999980163,
+        "median_request_seconds": 2.867499999993015,
+        "video_wall_seconds": 100.035
+      },
+      "X-13": {
+        "windows": 16,
+        "action_counts": {
+          "D": 14,
+          "B": 2
+        },
+        "request_seconds": 46.76400000008289,
+        "median_request_seconds": 2.8985000000102445,
+        "video_wall_seconds": 116.759
+      },
+      "X-19": {
+        "windows": 14,
+        "action_counts": {
+          "D": 11,
+          "B": 3
+        },
+        "request_seconds": 39.85800000000745,
+        "median_request_seconds": 2.827999999979511,
+        "video_wall_seconds": 81.034
+      },
+      "X-44": {
+        "windows": 5,
+        "action_counts": {
+          "D": 2,
+          "B": 2,
+          "A": 1
+        },
+        "request_seconds": 15.001000000047497,
+        "median_request_seconds": 2.969000000040978,
+        "video_wall_seconds": 58.319
+      },
+      "X-37": {
+        "windows": 4,
+        "action_counts": {
+          "D": 2,
+          "B": 2
+        },
+        "request_seconds": 12.376000000047497,
+        "median_request_seconds": 2.992499999993015,
+        "video_wall_seconds": 113.434
+      }
+    },
+    "manual_count_code_A_on_positive_videos": 2,
+    "manual_count_code_A_on_clean_videos": 1,
+    "binary_accuracy": null
+  },
+  "e4b_same_input_pair": {
+    "run_id": "gemma-e4b-20261018",
+    "status": "complete",
+    "input_hashes_match_e2b": true,
+    "windows": 36,
+    "request_seconds": 172.1109999998007,
+    "request_median_seconds": 4.727000000013504,
+    "inference_stage_wall_seconds": 174.09400000004098,
+    "preparation_seconds": 102.07799999997951,
+    "per_video": {
+      "X-4": {
+        "windows": 18,
+        "e2b": {
+          "D": 7,
+          "A": 5,
+          "B": 6
+        },
+        "e4b": {
+          "B": 18
+        },
+        "e2b_request_seconds": 55.219999999855645,
+        "e4b_request_seconds": 87.1859999995213
+      },
+      "X-5": {
+        "windows": 18,
+        "e2b": {
+          "D": 12,
+          "B": 5,
+          "A": 1
+        },
+        "e4b": {
+          "B": 18
+        },
+        "e2b_request_seconds": 52.18699999980163,
+        "e4b_request_seconds": 84.9250000002794
+      }
+    },
+    "binary_accuracy": null,
+    "conclusion": "All36 answers B on both positive/control. No measured violation gain; action correctness lacks independent per-window ground truth. Do not turn B or A into a legal verdict."
+  },
+  "decision": {
+    "promote_to_production": false,
+    "reason": "No validated accuracy gain; existing rules missing T3/T13 and T9 needs operation coverage; larger model alone does not implement these rules."
+  },
+  "source_artifacts_sha256": {
+    "runs/jobs/gemma-e2b-awake-20261018/t9-balanced.json": "a098115b2f172a91af7fc497f15f0e12703d619f65bf4652c612479c29887f8c",
+    "runs/jobs/gemma-e2b-awake-20261018/t9-balanced.runtime.json": "ef2b2d800de65f9cdc68f236b062a577577e33f6c62fb303c594495e63d19370",
+    "runs/jobs/gemma-e2b-awake-20261018/input-manifest.json": "ead4433c35efe27d108eb7310560c386ab868a1b6458968db470463ab39b7d59",
+    "runs/jobs/gemma-e4b-20261018/pair.json": "6fbe6de23402788e03f067a182c6f0de3b00067551d2128941ce0018a05ad92f",
+    "runs/jobs/gemma-e4b-20261018/pair.runtime.json": "0793375c3ae0c504f51ea7bf25cb21965d5138d8884d37be424254e7caa03fad",
+    "runs/jobs/gemma-e4b-20261018/prepared-inputs/manifest.json": "ad2ca224e37aee1e5333f49181b6470fd05fc6753f50759c80693d415a2c4cce",
+    "runs/jobs/gemma-e4b-20261018/server-pair-launch.json": "06e090774ee91f1be827e53dda3279eaf2f474ba9c39ab144318b0583e289b42",
+    "runs/jobs/gemma-e4b-20261018/prepare_pair.py": "e10ea5e8f50fb056c293745a17ed5233ac8e4b036006240b81fb4b2c235bdc70",
+    "runs/jobs/gemma-e4b-20261018/run_pair.py": "0b9218fbac4f91fb95483cfbe8975b51c0585eefad7b41bca56ff12e72ff1523",
+    "runs/jobs/gemma-e4b-key-20261018-retry.json": "d9cd5f0e23575220af74dea9a926093203c8523822e64bd15626efec600c9e47",
+    "runs/jobs/gemma-key-prepared-20261018/manifest.json": "d01d314bac5d7f1a0156c314c7f10e7b42c50ddcaa7e9625efc280af773feb1e",
+    "runs/jobs/gemma-e4b-key-20261018-retry.runtime.json": "cd0d7cdc36eaf116878faefd10c16f56291463f681f0cef841453df92e869d00",
+    "runs/jobs/gemma-key-prepared-20261018.runtime.json": "e6f2969d0b6f120800f5021c950547eb1a240628ebb858fd9dd77f3711e0888b",
+    "runs/jobs/gemma-e4b-key-20261018.json": "2dbb60ef164793ec14d10d22287ecf57abe21e01ca66758229114366ae9eb774",
+    "runs/jobs/gemma-e4b-20261018/server-key-launch.json": "db5c2736fcf5845200dd772f8c8b9cad25541ef779299a53918a135735cbd8c7"
+  },
+  "current_team_report": {
+    "source_commit": "3aff52e6e93b96d0ac66420720f0804104994456",
+    "run": "20261018T0333-4faf",
+    "observed_videos": 4,
+    "expected_videos": 40,
+    "cache_enabled": true,
+    "full_accuracy": null,
+    "note": "37/40 is a composite development estimate in docs, not a complete current40 run",
+    "review_findings": [
+      {
+        "file": "vision/engine.py",
+        "lines": [
+          194,
+          684
+        ],
+        "finding": "T6 absence-of-back-view uses bool _ask: unparseable/None becomes False. Require tri-state and abstain on insufficient known observations."
+      },
+      {
+        "file": "vision/engine.py",
+        "lines": [
+          467,
+          687
+        ],
+        "finding": "Entering drops missed detections; runs may join gaps and no full12s coverage guard. Check actual timestamps and observation duration."
+      },
+      {
+        "file": "vision/engine.py",
+        "lines": [
+          679
+        ],
+        "finding": "Pose is a proxy for door state; camera geometry and closing without turning can produce false positives. Must not describe as generic open-door recognition."
+      }
+    ],
+    "review_sent_to_owner": true
+  },
+  "e4b_key_state_screen": {
+    "status": "complete",
+    "videos": 3,
+    "windows": 15,
+    "uniform_windows_per_video": 5,
+    "window_span_sec": 2,
+    "state_counts": {
+      "D": 15
+    },
+    "per_video_state_counts": {
+      "X-22": {
+        "D": 5
+      },
+      "X-23": {
+        "D": 5
+      },
+      "X-29": {
+        "D": 5
+      }
+    },
+    "request_seconds": 72.20400000002701,
+    "median_request_seconds": 4.766000000061467,
+    "replay_stage_seconds": 72.832,
+    "separate_preprocessing": true,
+    "binary_accuracy": null,
+    "conclusion": "All15 answers D (uncertain). No observed key-positive evidence; not proof of absent key or correct negative verdict. No measured T3 recovery.",
+    "first_attempt": {
+      "status": "failed",
+      "completed_calls": 0,
+      "reason": "Server was still loading (503); preserved separately. Retry only after health=ok."
+    },
+    "server_stopped_after_run": true
+  },
+  "local_experiment_sources_sha256": {
+    "service/local_vlm_probe.py": "1f10e14cc9522338a57c7b3bef776d5a6c11471fc40784e63ef86a57833f4d26",
+    "service/local_state_probe.py": "cb4c19eadfe61f01915f5ec790dc77ac4f6402f4a23c2b8694b226eab46e3a65",
+    "service/prepared_state_probe.py": "38b217bb3c09e5de66f86309676532a15f7e789d2ae8931ada99652aa0e0a80e"
+  }
+}

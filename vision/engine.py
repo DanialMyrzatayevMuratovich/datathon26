@@ -35,6 +35,7 @@ T9_CASH_CHECKS = 4
 T9_MACHINE_EVERY_S = 4.0
 EAT_CHECK_EVERY_S = 10.0
 BAG_SCORE = 0.55
+T8_VOTE = os.getenv("DT_T8_VOTE") == "1"  # 2-of-3 vote for "counting after the client left"
 EVENT_GAP_S = 15.0  # two events of one type closer than this are one case
 BAGS = ("handbag", "backpack", "suitcase")
 RETURN_MAX_S = 1.0  # a return to the post this short does not end leaving
@@ -105,6 +106,17 @@ def _ioa(person, zone) -> float:
     inter = max(0.0, x1 - x0) * max(0.0, y1 - y0)
     area = max(1e-6, (person[2] - person[0]) * (person[3] - person[1]))
     return inter / area
+
+
+def _fill_gaps(flags: list[bool], max_gap: int) -> list[bool]:
+    """Detector flicker: a False gap of <= max_gap frames between two True frames becomes True."""
+    out, last = list(flags), None
+    for i, f in enumerate(flags):
+        if f:
+            if last is not None and 1 < i - last <= max_gap + 1:
+                out[last + 1:i] = [True] * (i - last - 1)
+            last = i
+    return out
 
 
 def _runs(flags: list[bool], value: bool, min_len: int) -> list[tuple[int, int]]:
@@ -231,6 +243,17 @@ class Checker:
         """Personal things left on the desk after she left (drink cans, food, bag) — E3: X-24 yes, 11 leaves no."""
         return (self.sc.desk is not None and not self.dark(i)
                 and self._ask(("items_left", i), _tiles(self.frames[i][1], self.sc.desk), Q_ITEMS_LEFT))
+
+    def counting_vote(self, e: int, n: int, k) -> bool:
+        """counting_after on 3 frame sets shifted by 0.5 s; 2 of 3 must say "counting at the machine" — one answer
+        flips on a re-encoded or mirrored copy (X-38), a vote does not."""
+        sets = [(1.0, 2.5, 4.0), (1.5, 3.0, 4.5), (0.5, 2.0, 3.5)]
+        votes = 0
+        for n_set, offs in enumerate(sets):
+            votes += self.counting_after([min(n - 1, e + k(x)) for x in offs])
+            if votes >= 2 or votes + (len(sets) - n_set - 1) < 2:
+                break
+        return votes >= 2
 
     def counting_after(self, idx) -> bool:
         """3 ordered desk frames after a client left: counting at the machine (A) vs putting cash away (B/C)."""
@@ -540,7 +563,8 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
             continue  # the client is still/again there most of the window: a detection drop-out, not leaving
         ps, ps2 = near_cash[j], near_cash[j2]
         if (ps and ps2 and chk.handling_cash(j, list(ps[0].box)) and chk.handling_cash(j2, list(ps2[0].box))
-                and chk.counting_after([min(n - 1, e + k(x)) for x in (1.0, 2.5, 4.0)])):
+                and (chk.counting_vote(e, n, k) if T8_VOTE else
+                     chk.counting_after([min(n - 1, e + k(x)) for x in (1.0, 2.5, 4.0)]))):
             events.append(Event("T8", t[e], [t[j]], "клиент уходит, а кассир продолжает пересчёт его наличных "
                                 "уже без него", 0.7))
 
@@ -567,7 +591,8 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
         mine = lambda b: ((b[1] + b[3]) / 2 >= mid) == (tr.depth >= mid)  # noqa: E731
         bag = [any(d.label in BAGS and d.score >= 0.5 and _ioa(d.box, desk_zone) >= 0.6 and mine(d.box)
                    and all(_ioa(d.box, p.box) < 0.5 for p in tr.persons[i]) for d in dets[i]) for i in range(n)]
-        for s, _e in _runs(bag, True, k(3.0)):
+        # a detector flickers (more so on another camera, X-40 mirrored): gaps up to 1 s do not break the 3 s
+        for s, _e in _runs(_fill_gaps(bag, k(1.0)), True, k(3.0)):
             j = min(n - 1, s + k(1.0))
             if chk.items_on_desk(j):
                 events.append(Event("T11", t[s], [t[s], t[j]], "на рабочем столе кассира лежат личные вещи "

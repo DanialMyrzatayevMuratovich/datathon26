@@ -63,3 +63,4 @@
 - 03:14 · danial · Danial · ml: detector-flicker gap filling for bag-on-desk (X-40 robust on mirror, no new candidates on 40 videos); T8 2-of-3 vote added but off (loses X-38) (R7, R11) · тесты: pass
 - 03:22 · danial · Danial · ml: X-18 found — T7 'outsider stands while a client is seated' (relative box height excludes people behind glass, 0 hits on clean); T9 refinement only for cash violations; 35/40 (R7) · тесты: pass
 - 03:30 · asylbek · Асылбек · fix: keep bounded Windows probes awake and preserve input provenance (R7) · тесты: pass
+- 03:37 · danial · Danial · T6 door left open: entering person never turns back to the door (X-32, X-33 found; 37/40 on cache) (R7) · тесты: pass

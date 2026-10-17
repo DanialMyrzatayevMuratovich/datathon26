@@ -38,6 +38,8 @@ BAG_SCORE = 0.55
 T8_VOTE = os.getenv("DT_T8_VOTE") == "1"  # 2-of-3 vote for "counting after the client left"
 CASH_TYPES = ("T1", "T2", "T8")  # cash left / open / counted without the client
 EVENT_GAP_S = 15.0  # two events of one type closer than this are one case
+DOOR_WINDOW_S = 12.0  # after somebody walks into the empty cash room: the time she has to close the door
+DOOR_TURN_S = 3.0  # back to the camera this long = turned to the door to close it (X-31 4 s, X-40 4.5 s; open: <= 2 s)
 BAGS = ("handbag", "backpack", "suitcase")
 RETURN_MAX_S = 1.0  # a return to the post this short does not end leaving
 RETURN_STANDING_S = 2.5  # ... or this short if she stays on her feet
@@ -62,6 +64,8 @@ Q_ACTION = ("These are three frames in time order from a camera above a bank cas
             "machine; B — putting the cash away (into a safe, a drawer or a bag) or tidying up; C — something else.")
 Q_HANDLING = ("Is someone handling banknotes in this image right now — counting cash by hand or feeding money into "
               "a banknote counting machine (a machine with a slot and a display)?")
+Q_BACK = ("Look at the person in the picture. Is the person turned away from the camera, so that we see the back of "
+          "the head and the back, not the face?")
 
 
 @dataclass
@@ -275,6 +279,9 @@ class Checker:
         return self.sc.machine is not None and self._ask(("machine", i), [crop(self.frames[i][1], self.sc.machine)],
                                                          Q_MACHINE)
 
+    def turned_away(self, i, person_box):
+        return self._ask(("back", i), [crop(self.frames[i][1], person_box, margin=0.15, out_side=448)], Q_BACK)
+
     def eating(self, i, person_box):
         return self._ask(("eat", i), [crop(self.frames[i][1], person_box, margin=0.15)], Q_EAT)
 
@@ -455,6 +462,25 @@ def leave_start(tr: Tracks, s: int, W: int) -> int:
             continue
         break
     return min(s, i + 1)
+
+
+def entering(dets, H: int, n: int) -> list:
+    """[(frame, box)] of the person who walks into a room empty at the start, followed frame to frame for
+    DOOR_WINDOW_S; [] when somebody is there from the start. Raw boxes: she is first seen through the glass wall."""
+    raw = [[d for d in ds if d.label == "person" and d.score >= 0.5 and d.height >= 0.12 * H] for ds in dets]
+    if any(raw[i] for i in range(min(n, 2))):
+        return []
+    first = next((i for i, ps in enumerate(raw) if ps), None)
+    if first is None:
+        return []
+    cur, out = max(raw[first], key=lambda p: p.score), []
+    for i in range(first, min(n, first + max(1, round(DOOR_WINDOW_S * FPS)))):
+        if raw[i]:
+            nxt = min(raw[i], key=lambda p: abs(p.cx - cur.cx) + abs(p.bottom - cur.bottom))
+            if abs(nxt.cx - cur.cx) + abs(nxt.bottom - cur.bottom) < 0.25 * H:
+                cur = nxt
+                out.append((i, cur))
+    return out
 
 
 def client_arrivals(tr: Tracks) -> list[int]:
@@ -649,6 +675,21 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
                                                   if at_safe[x] and not at_safe[x - 1]), cash[0])
             events.append(Event("T9", t[i], [t[i]], "операция с наличными проходит вручную: купюры на столе, "
                                 "счётная машина за всё видео не используется", 0.6))
+
+    # 9) the cash-room door left open. The glass door itself is a few pixels the VLM can't judge (E2, E4, E6), the
+    #    person is large: the room is empty at the start, somebody walks in and goes to the desk, and in DOOR_WINDOW_S
+    #    never stands with her back to the camera for DOOR_TURN_S — closing the door means turning to it (X-31,
+    #    X-40); walking straight to the desk leaves it open (X-32, X-33). A short back view while still outside,
+    #    opening the door, is under the limit. Assumes the camera faces the door (all open-set rooms).
+    ent = entering(dets, frames[0][1].height, n)
+    if ent and any(tr.at_work[i] for i in range(ent[0][0], min(n, ent[-1][0] + 1))):
+        back = [chk.turned_away(i, p.box) for i, p in ent]
+        turns = _runs(back, True, 1)
+        if max((e - s for s, e in turns), default=0) < k(DOOR_TURN_S):
+            j = ent[turns[-1][1]][0] if turns and turns[-1][1] < len(ent) else ent[0][0] + k(2.0)
+            i = min(n - 1, j + k(1.0))  # inside, walking on to the desk past the open door
+            events.append(Event("T6", t[i], [t[i], t[min(n - 1, i + k(2.0))]], "кассир входит в кассу и проходит "
+                                "к столу, не повернувшись к двери — дверь кассы остаётся открытой", 0.6))
     return events
 
 

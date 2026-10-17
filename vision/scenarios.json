@@ -118,7 +118,7 @@
     {
       "id": "S06",
       "type_id": "T6",
-      "coverage": "catalog_only",
+      "coverage": "family_rule",
       "title": "Дверь кассы осталась открытой после прохода",
       "references": [
         [

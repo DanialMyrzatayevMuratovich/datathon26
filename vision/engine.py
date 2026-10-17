@@ -34,6 +34,8 @@ Q_SAFE = "This is a close-up of a grey metal safe. Is the safe door open?"
 Q_CASH = "Are there banknotes or a stack of paper money in this image?"
 Q_EAT = "Is this person eating food or drinking from a cup or bottle right now?"
 Q_ITEMS = "Is there a jacket, a coat or a handbag lying on this desk?"
+Q_HANDLING = ("Is someone handling banknotes in this image right now — counting cash by hand or feeding money into "
+              "a banknote counting machine (a machine with a slot and a display)?")
 
 
 @dataclass
@@ -159,6 +161,12 @@ class Checker:
         return self.sc.desk is not None and self._ask(("items", i), _tiles(self.frames[i][1], self.sc.desk, 2, 2),
                                                        Q_ITEMS)
 
+    def handling_cash(self, i, person_box):
+        """Cash work at the counting machine: look at the desk around the machine, not at the person — from behind
+        the cashier her hands are hidden by her body, but the machine and the notes are visible from above."""
+        zone = _union(self.sc.desk, person_box) if self.sc.desk else person_box
+        return self._ask(("cash_hands", i), _tiles(self.frames[i][1], zone, 2, 2), Q_HANDLING)
+
     def eating(self, i, person_box):
         return self._ask(("eat", i), [crop(self.frames[i][1], person_box, margin=0.15)], Q_EAT)
 
@@ -195,47 +203,49 @@ def room_persons(dets, sc: Scene, H: int) -> list[list[people.Det]]:
     return out
 
 
-def stand_up_times(main_tops: list[float | None], t: list[float], H: int) -> list[float]:
-    """Moments when the person at the desk stands up: the box top jumps up by > 7 % of the frame."""
-    out = []
-    for i in range(4, len(main_tops)):
-        prev = [v for v in main_tops[i - 4:i - 1] if v is not None]
-        if main_tops[i] is not None and prev and min(prev) - main_tops[i] > 0.07 * H:
-            if not out or t[i] - out[-1] > 5:
-                out.append(t[i - 1])
-    return out
-
-
 def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
     H = frames[0][1].height
     n = len(frames)
     t = [f[0] for f in frames]
     work = _grow(_union(sc.desk, sc.laptop, sc.safe), 0.15)
-    cash_zone = _grow(_union(sc.laptop, sc.safe), 0.6, 0.4)
     safe_zone = _grow(sc.safe, 0.25)
+    desk_top = sc.desk[1] if sc.desk else 0.45 * H
     persons = room_persons(dets, sc, H)
     at_work = [[p for p in ps if _ioa(p.box, work) >= 0.25] for ps in persons]
-    near_cash = [[p for p in ps if _ioa(p.box, cash_zone) >= 0.35] for ps in at_work]
+    # The cashier's side is where the laptop stands; the client sits across the desk. From a camera above, the two
+    # sides differ by the vertical position of the person's feet relative to the desk: the person on the laptop's
+    # side has the box bottom on the same side of the desk centre as the laptop (works for both camera angles).
+    # Angle: the laptop lies on the cashier's edge of the desk. On the far edge (angle A) its centre is at or above
+    # the desk top in the image; on the near edge (angle B, camera behind the cashier) it sits clearly below it.
+    laptop_mid = (sc.laptop[1] + sc.laptop[3]) / 2 if sc.laptop else desk_top
+    cashier_below = laptop_mid > desk_top + 0.03 * H
+
+    def cashier_side(p) -> bool:
+        return (p.bottom >= desk_top + 0.08 * H) if cashier_below else (p.bottom < desk_top + 0.08 * H)
+
+    near_cash = [[p for p in ps if cashier_side(p)] for ps in at_work]
+    behind = [[p for p in ps if not cashier_side(p)] for ps in at_work]
     at_safe = [any(_ioa(p.box, safe_zone) >= 0.2 for p in ps) for ps in at_work]
     present = [len(ps) > 0 for ps in at_work]
     counts = [len(ps) for ps in at_work]
-    main_top = [min((p.box[1] for p in ps), default=None) if ps else None for ps in near_cash]
-    stands = stand_up_times(main_top, t, H)
+    client_here = [len(ps) > 0 for ps in behind]
+    seat_zone = _grow(_union(sc.laptop, sc.safe), 0.6, 0.4)
+    at_seat = [any(_ioa(p.box, seat_zone) >= 0.35 for p in ps) for ps in near_cash]
     k = lambda s: max(1, round(s * FPS))  # noqa: E731
     events: list[Event] = []
 
     def has(type_id):
         return any(e.type_id == type_id for e in events)
 
-    # 1) the cashier leaves her place (laptop/safe side): somebody there -> nobody for LEAVE_MIN_S,
+    # 1) the cashier leaves the workplace: somebody at the desk -> nobody for LEAVE_MIN_S,
     #    or nobody until the end of the video (clips often end right after she walks out)
-    seat = [len(ps) > 0 for ps in near_cash]
-    leave_runs = [(s, e) for s, e in _runs(seat, False, 2) if e - s >= k(LEAVE_MIN_S) or e == n]
+    leave_runs = [(s, e) for s, e in _runs(present, False, 2) if e - s >= k(LEAVE_MIN_S) or e == n]
     for s, _e in leave_runs:
         if s == 0:
             continue  # empty from the start: nobody left
-        before = [x for x in stands if t[s] - 20 <= x <= t[s]]
-        t_leave = before[-1] if before else t[max(0, s - 2)]  # she stands up, then walks out
+        # leaving starts when she steps away from her seat; walking past the desk to the door takes a few seconds
+        last_seat = max((i for i in range(s) if at_seat[i]), default=s - 1)
+        t_leave = round((t[last_seat] + t[s - 1]) / 2, 1)
         j = min(n - 1, s + k(2.0))  # state of the workplace 2 s after it is empty
         if chk.screen_app(j) and not has("T5"):
             events.append(Event("T5", t_leave, [t[j]], "кассир покидает рабочее место, экран ноутбука остаётся "
@@ -257,28 +267,36 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
                                     "наличные", 0.7))
             break
 
-    # 3) two or more people at the cashier's place (laptop/safe side), or three people at the desk
+    # 3) an outsider on the cashier's side: two or more people between the camera and the desk for a while.
+    #    (People waiting by the door or seen through the glass are not on the cashier's side and do not count.)
     for s, _e in _runs([len(ps) >= 2 for ps in near_cash], True, k(TWO_AT_DESK_MIN_S)):
         events.append(Event("T7", t[s], [t[s]], "рядом с кассиром на её стороне стола находится ещё один человек",
                             0.65))
         break
-    if not has("T7"):
-        for s, _e in _runs([c >= 3 for c in counts], True, k(TWO_AT_DESK_MIN_S)):
-            events.append(Event("T7", t[s], [t[s]], "в кассовой зоне одновременно три человека — посторонний во "
-                                "время обслуживания", 0.6))
-            break
 
-    # 4) safe left open: open while nobody is at the safe, two checks in a row (someone works at the desk)
+    # 4) safe left open: open while the cashier is away from the safe and no client is being served
+    #    (an open safe during a client operation is normal practice in the clean clips)
     step = k(SAFE_CHECK_EVERY_S)
     streak = []
     for i in range(0, n, step):
-        if present[i] and not at_safe[i] and chk.safe_open(i):
+        if present[i] and not at_safe[i] and not client_here[i] and chk.safe_open(i):
             streak.append(i)
             if len(streak) >= 2 and not has("T4"):
                 events.append(Event("T4", t[streak[0]], [t[streak[0]], t[i]], "дверца сейфа остаётся открытой, "
                                     "пока кассир работает за столом", 0.75))
         else:
             streak = []
+
+    # 4b) counting without the client: a client was served (>= 5 s), left, and the cashier keeps handling cash
+    was_client = _runs(client_here, True, k(5.0))
+    for _s, e in was_client:
+        if e >= n - 1 or not all(present[e:min(n, e + k(3.0))]) or has("T8"):
+            continue
+        j = min(n - 1, e + k(1.5))
+        ps = near_cash[j]
+        if ps and chk.handling_cash(j, list(ps[0].box)):
+            events.append(Event("T8", t[e], [t[j]], "клиент уходит, а кассир продолжает пересчёт его наличных "
+                                "уже без него", 0.7))
 
     # 5) eating/drinking at the workplace
     hits = []

@@ -61,3 +61,4 @@
 - 02:49 · danial · Danial · ml: synthetic camera-robustness test (shift/zoom crop, mirror) on 20 videos: 0 false alarms, 12/15 and 11/15 findings survive; fragile cash/items cases documented (R7, R11) · тесты: pass
 - 03:02 · asylbek · Асылбек · exp: isolated offline Gemma challenger and bounded probe (R7) · тесты: pass
 - 03:14 · danial · Danial · ml: detector-flicker gap filling for bag-on-desk (X-40 robust on mirror, no new candidates on 40 videos); T8 2-of-3 vote added but off (loses X-38) (R7, R11) · тесты: pass
+- 03:22 · danial · Danial · ml: X-18 found — T7 'outsider stands while a client is seated' (relative box height excludes people behind glass, 0 hits on clean); T9 refinement only for cash violations; 35/40 (R7) · тесты: pass

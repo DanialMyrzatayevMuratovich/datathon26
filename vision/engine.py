@@ -36,6 +36,7 @@ T9_MACHINE_EVERY_S = 4.0
 EAT_CHECK_EVERY_S = 10.0
 BAG_SCORE = 0.55
 T8_VOTE = os.getenv("DT_T8_VOTE") == "1"  # 2-of-3 vote for "counting after the client left"
+CASH_TYPES = ("T1", "T2", "T8")  # cash left / open / counted without the client
 EVENT_GAP_S = 15.0  # two events of one type closer than this are one case
 BAGS = ("handbag", "backpack", "suitcase")
 RETURN_MAX_S = 1.0  # a return to the post this short does not end leaving
@@ -528,6 +529,24 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
             events.append(Event("T7", t[s], [t[s]], "рядом с кассиром на её стороне стола находится ещё один "
                                 "человек", 0.65))
 
+    # 3b) an outsider walks in while a client is being served: on the client's side a seated client and, at the same
+    #     time, another person standing (box >= 1.6x the seated client's box — people seen through the glass wall are
+    #     farther and smaller) for >= 2 s. One client per cash desk; a second client who waits standing counts too.
+    #     Relative sizes only, so it does not depend on the camera angle (X-18; 0 hits on the other 39 clips).
+    hs_c = sorted(p.height for ps in tr.behind for p in ps)
+    if hs_c and not has("T7"):
+        h_csit = hs_c[len(hs_c) // 4]
+        both = []
+        for ps in tr.behind:
+            sit = [p for p in ps if p.height <= 1.25 * h_csit]
+            stand = [p for p in ps if p.height >= 1.6 * h_csit]
+            both.append(bool(sit) and any(all(_iou(a.box, b.box) < 0.3 for a in sit) for b in stand))
+        for s, e in _runs(_fill_gaps(both, k(1.0)), True, k(2.0)):
+            mid = (s + e - 1) // 2
+            events.append(Event("T7", t[mid], [t[s], t[mid]], "пока клиент обслуживается, в кассу входит и стоит у "
+                                "стола ещё один человек", 0.6))
+            break
+
     # 4) safe left open: open while the cashier is away from the safe and no client is being served
     #    (an open safe during a client operation is normal practice in the clean clips)
     #    Checked every SAFE_CHECK_EVERY_S in the first 6 s and right after she steps away from the safe (when a
@@ -613,7 +632,8 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
     #    refinement of a video that already shows a violation: on its own "machine not seen at work" also fires on
     #    clean client clips (E2: X-3, X-5, X-19, X-37), where the VLM misses the machine.
     if not has("T9"):
-        client_ctx = [i for s, e in _runs(client_here, True, k(5.0)) for i in range(s, e)] if events else []
+        cash_found = any(ev.type_id in CASH_TYPES for ev in events)  # refines a cash violation, not an outsider
+        client_ctx = [i for s, e in _runs(client_here, True, k(5.0)) for i in range(s, e)] if cash_found else []
         ctx = client_ctx
         if not ctx:  # a collection bag opened at the desk (X-13): its cash must be counted on the machine too
             ctx = [i for i in range(0, n, max(1, n // 6)) if present[i] and chk.green_bag(i, near=0.25)][:6]

@@ -1,0 +1,426 @@
+{
+ "videos": 22,
+ "tp": 12,
+ "fp": 0,
+ "fn": 1,
+ "tn": 9,
+ "recall": 0.923,
+ "precision": 1.0,
+ "accuracy": null,
+ "accuracy_observed_only": 0.954545,
+ "coverage": {
+  "complete": false,
+  "expected": 40,
+  "observed": 22,
+  "missing": [
+   "X-10",
+   "X-18",
+   "X-19",
+   "X-2",
+   "X-21",
+   "X-30",
+   "X-31",
+   "X-32",
+   "X-33",
+   "X-34",
+   "X-35",
+   "X-37",
+   "X-39",
+   "X-40",
+   "X-43",
+   "X-44",
+   "X-45",
+   "X-5"
+  ],
+  "extra": []
+ },
+ "joint_events": {
+  "type_and_time_1s": {
+   "tp": 7,
+   "fp": 8,
+   "fn": 15,
+   "precision": 0.466667,
+   "recall": 0.318182,
+   "f1": 0.378378
+  },
+  "type_and_time_2s": {
+   "tp": 8,
+   "fp": 7,
+   "fn": 14,
+   "precision": 0.533333,
+   "recall": 0.363636,
+   "f1": 0.432432
+  }
+ },
+ "event_hit_note": "type_hit/time_hit_2s are separate legacy diagnostics; use joint_events for event quality",
+ "type_hit": "12/14",
+ "time_hit_2s": "8/14",
+ "max_seconds": 43.9,
+ "per_video": {
+  "X-1": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T9",
+      "t": 22.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": false
+    }
+   ],
+   "pred_types": [
+    [
+     "T2",
+     1.5
+    ],
+    [
+     "T9",
+     1.5
+    ]
+   ],
+   "seconds": 1.24
+  },
+  "X-3": {
+   "gt": false,
+   "pred": false,
+   "events": [],
+   "pred_types": [],
+   "seconds": 14.14
+  },
+  "X-4": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T2",
+      "t": 57.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": true
+    },
+    {
+     "gt": {
+      "type_id": "T9",
+      "t": 68.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": false
+    }
+   ],
+   "pred_types": [
+    [
+     "T2",
+     55.0
+    ],
+    [
+     "T9",
+     55.0
+    ]
+   ],
+   "seconds": 3.08
+  },
+  "X-8": {
+   "gt": false,
+   "pred": false,
+   "events": [],
+   "pred_types": [],
+   "seconds": 20.76
+  },
+  "X-11": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T5",
+      "t": 18.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": true
+    }
+   ],
+   "pred_types": [
+    [
+     "T5",
+     17.5
+    ]
+   ],
+   "seconds": 1.24
+  },
+  "X-12": {
+   "gt": false,
+   "pred": false,
+   "events": [],
+   "pred_types": [],
+   "seconds": 1.98
+  },
+  "X-13": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T9",
+      "t": 47.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": false
+    }
+   ],
+   "pred_types": [
+    [
+     "T9",
+     31.5
+    ]
+   ],
+   "seconds": 2.82
+  },
+  "X-14": {
+   "gt": false,
+   "pred": false,
+   "events": [],
+   "pred_types": [],
+   "seconds": 5.52
+  },
+  "X-15": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T1",
+      "t": 15.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": true
+    }
+   ],
+   "pred_types": [
+    [
+     "T1",
+     15.5
+    ]
+   ],
+   "seconds": 1.09
+  },
+  "X-16": {
+   "gt": false,
+   "pred": false,
+   "events": [],
+   "pred_types": [],
+   "seconds": 23.03
+  },
+  "X-17": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T10",
+      "t": 7.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": true
+    }
+   ],
+   "pred_types": [
+    [
+     "T10",
+     7.5
+    ]
+   ],
+   "seconds": 43.9
+  },
+  "X-20": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T4",
+      "t": 5.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": true
+    }
+   ],
+   "pred_types": [
+    [
+     "T4",
+     5.5
+    ]
+   ],
+   "seconds": 16.21
+  },
+  "X-22": {
+   "gt": true,
+   "pred": false,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T3",
+      "t": 14.0,
+      "confidence": "high"
+     },
+     "type_hit": false,
+     "time_hit": false
+    }
+   ],
+   "pred_types": [],
+   "seconds": 0.98
+  },
+  "X-23": {
+   "gt": false,
+   "pred": false,
+   "events": [],
+   "pred_types": [],
+   "seconds": 0.92
+  },
+  "X-24": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T11",
+      "t": 8.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": true
+    }
+   ],
+   "pred_types": [
+    [
+     "T11",
+     8.0
+    ]
+   ],
+   "seconds": 0.85
+  },
+  "X-25": {
+   "gt": false,
+   "pred": false,
+   "events": [],
+   "pred_types": [],
+   "seconds": 1.41
+  },
+  "X-26": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T1",
+      "t": 9.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": false
+    }
+   ],
+   "pred_types": [
+    [
+     "T1",
+     13.0
+    ]
+   ],
+   "seconds": 1.03
+  },
+  "X-27": {
+   "gt": false,
+   "pred": false,
+   "events": [],
+   "pred_types": [],
+   "seconds": 1.26
+  },
+  "X-28": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T5",
+      "t": 7.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": true
+    }
+   ],
+   "pred_types": [
+    [
+     "T5",
+     7.5
+    ]
+   ],
+   "seconds": 0.89
+  },
+  "X-29": {
+   "gt": false,
+   "pred": false,
+   "events": [],
+   "pred_types": [],
+   "seconds": 0.91
+  },
+  "X-38": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T2",
+      "t": 33.0,
+      "confidence": "high"
+     },
+     "type_hit": false,
+     "time_hit": false
+    }
+   ],
+   "pred_types": [
+    [
+     "T9",
+     25.0
+    ],
+    [
+     "T8",
+     54.5
+    ]
+   ],
+   "seconds": 2.88
+  },
+  "X-46": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T12",
+      "t": 11.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": true
+    }
+   ],
+   "pred_types": [
+    [
+     "T12",
+     10.0
+    ]
+   ],
+   "seconds": 18.74
+  }
+ }
+}

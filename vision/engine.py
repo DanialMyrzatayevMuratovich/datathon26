@@ -12,7 +12,7 @@ import os
 import time
 from dataclasses import dataclass, field
 
-from PIL import Image
+from PIL import Image, ImageStat
 
 from contract.schemas import EvidenceFrame, VideoAnalysis, ViolationDetail
 from vision import limits, people, scene, vlm
@@ -172,6 +172,7 @@ class Checker:
         self.by_kind: dict[str, int] = {}
         self.dc = dc
         self.find_machine = None  # set by run(): finds the counting machine on demand
+        self._bright, self._lum = None, {}
 
     def _ask(self, key, images, q) -> bool:
         if key not in self.cache:
@@ -197,11 +198,24 @@ class Checker:
         return self.sc.laptop is not None and self._ask(("screen", i), [crop(self.frames[i][1], self.sc.laptop)],
                                                          Q_SCREEN)
 
+    def dark(self, i) -> bool:
+        """The light is off (25 % darker than this clip usually is): the VLM then guesses about safes and cash
+        (X-11, X-12), while a lit laptop screen is still visible — so only the screen is asked in the dark."""
+        if self._bright is None:
+            n = len(self.frames)
+            ref = sorted(ImageStat.Stat(self.frames[j][1].convert("L")).mean[0] for j in range(0, n, max(1, n // 12)))
+            self._bright = ref[len(ref) // 2]
+        if i not in self._lum:
+            self._lum[i] = ImageStat.Stat(self.frames[i][1].convert("L")).mean[0]
+        return self._lum[i] < 0.75 * self._bright
+
     def safe_open(self, i):
-        return self.sc.safe is not None and self._ask(("safe", i), [crop(self.frames[i][1], self.sc.safe)], Q_SAFE)
+        return (self.sc.safe is not None and not self.dark(i)
+                and self._ask(("safe", i), [crop(self.frames[i][1], self.sc.safe)], Q_SAFE))
 
     def cash_on_desk(self, i):
-        return self.sc.desk is not None and self._ask(("cash", i), _tiles(self.frames[i][1], self.sc.desk), Q_CASH)
+        return (self.sc.desk is not None and not self.dark(i)
+                and self._ask(("cash", i), _tiles(self.frames[i][1], self.sc.desk), Q_CASH))
 
     def items_on_desk(self, i):
         return self.sc.desk is not None and self._ask(("items", i), _tiles(self.frames[i][1], self.sc.desk, 2, 2),
@@ -215,8 +229,8 @@ class Checker:
 
     def items_left(self, i):
         """Personal things left on the desk after she left (drink cans, food, bag) — E3: X-24 yes, 11 leaves no."""
-        return self.sc.desk is not None and self._ask(("items_left", i), _tiles(self.frames[i][1], self.sc.desk),
-                                                       Q_ITEMS_LEFT)
+        return (self.sc.desk is not None and not self.dark(i)
+                and self._ask(("items_left", i), _tiles(self.frames[i][1], self.sc.desk), Q_ITEMS_LEFT))
 
     def counting_after(self, idx) -> bool:
         """3 ordered desk frames after a client left: counting at the machine (A) vs putting cash away (B/C)."""
@@ -540,7 +554,7 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
                                                and _ioa(d.box, _grow(list(cb.box), 0.3)) > 0.5 for d in ds):
             cand.add(i)
             last = i
-    hits = [i for i in sorted(cand) if tr.cashier[i] and chk.eating(i, list(tr.cashier[i].box))]
+    hits = [i for i in sorted(cand) if tr.cashier[i] and not client_here[i] and chk.eating(i, list(tr.cashier[i].box))]
     if len(hits) >= 2:
         events.append(Event("T12", t[hits[0]], [t[hits[0]], t[hits[1]]], "кассир ест или пьёт за рабочим столом",
                             0.7))
@@ -564,9 +578,10 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
     for s, e in _runs([c >= 2 for c in counts], True, 1):
         if s == 0 or (t[e - 1] - t[s]) > 12.0 or chk.green_bag(max(0, s - k(2.0))):
             continue
-        if any(chk.green_bag(i) for i in range(s, min(n, e + k(2.0)), 2)):
-            events.append(Event("T10", t[s], [t[min(n - 1, s + k(2.0))]], "посетитель передаёт инкассаторскую "
-                                "сумку и сразу уходит, проверки документа и пломбы не видно", 0.6))
+        bag_at = next((i for i in range(s, min(n, e + k(2.0)), 2) if chk.green_bag(i)), None)
+        if bag_at is not None:  # the moment = the bag is on the desk (handed over), not the visitor's arrival
+            events.append(Event("T10", t[bag_at], [t[bag_at]], "посетитель передаёт инкассаторскую сумку и сразу "
+                                "уходит, проверки документа и пломбы не видно", 0.6))
             break
     # 8) a cash operation without the counting machine: cash is seen on the desk while a client is served or a
     #    collection bag is open, and the machine is never seen at work in the whole video. With a client — only as a

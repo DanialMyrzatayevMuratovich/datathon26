@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|
 | danial | Даниал | DanialMyrzatayevMuratovich | лид; ML-поток (распознавание видео, нормы) вместе с агентом | Claude Code | macOS, Apple M4, 16 ГБ — хост сервиса | |
 | asylbek | Асылбек | Asylbek2006 | Фронтенд и бэкенд | Codex | Windows; ASUS TUF Gaming F17 FX707ZC4; Intel Core i5-12500H; 16 ГБ RAM; NVIDIA GeForce RTX 3050 Laptop GPU | Предпочитает передать ML и обучение моделей напарнику |
-| bigali (предварительно) | Бигали | — | фронтенд, оформление, документы сдачи, питч (уточнить при подключении) | — | — | |
+| bigali | Бигали | bgl96395 | Фронтенд / UI | Claude Code | Windows 11; Acer Nitro AN515-58; Intel Core i5-12450H; 16 ГБ RAM; NVIDIA GeForce RTX 4050 Laptop GPU (6 ГБ) | Не любит выступать на питче |
 
 **Лид-интегратор** — `LEAD` в `docs/ZONES.md`: запускает `/kickoff`, владеет контрактом (`task.toml`), зависимостями, конфигами и ключами, разбирает конфликты. Лид тоже ведёт поток работы.
 

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Проверка кассовой дисциплины</title>
+  <meta name="description" content="Загрузите видео с камеры над кассой — сервис покажет признаки возможных нарушений, кадры, таймкоды и пункты нормативных актов РК.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>Проверка кассовой дисциплины</h1>
+      <p class="lead">Видео с камеры над кассой → признаки возможных нарушений, кадры и пункт нормы</p>
+    </div>
+    <p class="service" id="service" data-state="wait"><span class="dot" aria-hidden="true"></span><span id="service-text">Проверяем связь с сервисом…</span></p>
+  </header>
+
+  <main>
+    <!-- 1. Загрузка -->
+    <section class="panel" id="view-upload" aria-labelledby="upload-title">
+      <h2 class="visually-hidden" id="upload-title">Загрузка видео</h2>
+      <div class="key-row">
+        <label for="api-key">API-ключ</label>
+        <input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="Ключ, который выдала команда">
+        <button type="button" class="ghost" id="key-toggle" aria-controls="api-key">Показать</button>
+      </div>
+
+      <label class="drop" id="drop">
+        <input class="visually-hidden" type="file" id="file" accept=".mov,video/quicktime,video/*">
+        <svg class="drop-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="5" y="12" width="28" height="24" rx="3"/><path d="M33 21l10-6v18l-10-6"/><path d="M19 30V19m-5 5l5-5 5 5"/></svg>
+        <span class="drop-title">Перетащите видео .mov сюда</span>
+        <span class="drop-hint">или нажмите, чтобы выбрать файл · до 200 МБ</span>
+      </label>
+
+      <div class="file-row" id="file-row" hidden>
+        <div class="file-info">
+          <span class="file-name" id="file-name"></span>
+          <span class="file-size" id="file-size"></span>
+        </div>
+        <button type="button" class="primary" id="start">Проверить видео</button>
+      </div>
+      <button type="button" class="ghost demo-link" id="demo" hidden>Показать пример результата без видео</button>
+      <p class="form-error" id="form-error" role="alert" hidden></p>
+    </section>
+
+    <!-- 2. Обработка -->
+    <section class="panel" id="view-progress" aria-labelledby="progress-title" hidden>
+      <div class="progress-head">
+        <h2 id="progress-title">Загружаем видео</h2>
+        <span class="elapsed" id="elapsed"></span>
+      </div>
+      <div class="bar" role="progressbar" aria-labelledby="progress-title" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="bar">
+        <div class="bar-fill" id="bar-fill"></div>
+      </div>
+      <ol class="steps" id="steps">
+        <li data-step="upload">Загрузка файла</li>
+        <li data-step="decode">Раскадровка</li>
+        <li data-step="detect">Поиск событий</li>
+        <li data-step="verify">Проверка по правилам</li>
+        <li data-step="report">Отчёт</li>
+      </ol>
+      <p class="progress-note" id="progress-note" aria-live="polite"></p>
+      <button type="button" class="ghost" id="cancel">Отменить проверку</button>
+    </section>
+
+    <!-- 3. Ошибка -->
+    <section class="panel failure" id="view-failure" role="alert" aria-labelledby="failure-title" hidden>
+      <h2 id="failure-title">Проверка не завершилась</h2>
+      <p id="failure-text"></p>
+      <p class="failure-detail" id="failure-detail" hidden></p>
+      <div class="actions">
+        <button type="button" class="primary" id="retry">Повторить</button>
+        <button type="button" class="secondary" id="choose-other">Выбрать другой файл</button>
+      </div>
+    </section>
+
+    <!-- 4. Результат -->
+    <section id="view-result" aria-labelledby="verdict-title" hidden>
+      <div class="verdict" id="verdict">
+        <span class="verdict-icon" id="verdict-icon" aria-hidden="true"></span>
+        <div class="verdict-body">
+          <h2 id="verdict-title" tabindex="-1"></h2>
+          <p id="verdict-text"></p>
+          <p class="verdict-meta" id="verdict-meta"></p>
+          <p class="badge-mock" id="badge-mock" hidden>Демо-данные: вместо модели работает заглушка</p>
+        </div>
+      </div>
+
+      <div class="panel player-panel" id="player-panel">
+        <video id="player" controls preload="metadata" playsinline></video>
+        <p class="player-note" id="player-note" hidden>Браузер не может воспроизвести этот файл (часто это кодек HEVC). Кадры-доказательства — в карточках ниже.</p>
+        <div class="timeline-wrap">
+          <p class="timeline-label" id="timeline-label">Шкала ролика: окна событий отмечены, нажмите, чтобы перейти</p>
+          <div class="timeline" id="timeline" aria-labelledby="timeline-label">
+            <span class="playhead" id="playhead" aria-hidden="true"></span>
+          </div>
+          <div class="ticks" id="ticks" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <ol class="cases" id="cases"></ol>
+
+      <div class="actions result-actions">
+        <button type="button" class="secondary" id="again">Проверить другое видео</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Результат — подсказка для проверяющего, а не заключение: решение о нарушении принимает человек. Видео обрабатывается на сервере команды, облачные AI-сервисы не используются. Лица не распознаются.</p>
+  </footer>
+
+  <template id="tpl-case">
+    <li class="case">
+      <div class="frames"></div>
+      <div class="case-body">
+        <div class="case-head">
+          <span class="case-num" aria-hidden="true"></span>
+          <h3 class="case-type"></h3>
+          <button type="button" class="timecode" title="Перейти к моменту в видео">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg>
+            <span class="timecode-text"></span>
+          </button>
+        </div>
+        <p class="case-meta">
+          <span class="case-window">окно события <span class="mono"></span></span>
+          <span class="confidence">
+            <span class="confidence-text"></span>
+            <span class="confidence-bar" aria-hidden="true"><span></span></span>
+          </span>
+        </p>
+        <p class="case-desc"></p>
+        <p class="case-why"><strong>Связь с нормой.</strong> <span></span></p>
+        <h4 class="rules-title">Нормативное основание</h4>
+        <div class="rules"></div>
+      </div>
+    </li>
+  </template>
+
+  <template id="tpl-rule">
+    <article class="rule">
+      <p class="rule-head"><span class="basis"></span> <span class="rule-ref"></span></p>
+      <div class="rule-doc">
+        <p class="rule-approved"></p>
+        <button type="button" class="rule-act" aria-expanded="false" title="Показать полное название документа"></button>
+      </div>
+      <blockquote class="rule-quote"></blockquote>
+      <a class="rule-link" target="_blank" rel="noopener noreferrer">Открыть текст акта на adilet.zan.kz</a>
+    </article>
+  </template>
+
+  <dialog class="lightbox" id="lightbox" aria-label="Кадр-доказательство крупно">
+    <img id="lightbox-img" alt="">
+    <p class="lightbox-caption" id="lightbox-caption"></p>
+    <button type="button" class="lightbox-close" id="lightbox-close">Закрыть</button>
+  </dialog>
+
+  <script src="app.js" defer></script>
+</body>
+</html>

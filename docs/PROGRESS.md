@@ -15,3 +15,4 @@
 - 14:23 · asylbek · Асылбек · feat: add secure video API, bounded workers and team handoff (R1-R5 R9) · тесты: pass
 - 16:10 · danial · Danial · docs: analysis rules (methodology, contrast pairs, confidence, detection rules) in ANALYSIS_RULES.txt · тесты: FAIL
 - 16:13 · danial · Danial · lead: python-multipart dep, ignore runs/jobs, ruff clean (R1, R9) · тесты: pass
+- 16:13 · bigali · Бигали · chore: add bigali to team · тесты: pass

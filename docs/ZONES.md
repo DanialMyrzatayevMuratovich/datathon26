@@ -13,6 +13,7 @@
 
 MEMBER: danial Danial DanialMyrzatayevMuratovich 179967465
 MEMBER: asylbek Асылбек Asylbek2006 166900995
+MEMBER: bigali Бигали bgl96395 192720128
 LEAD: danial
 ALL: docs/PROGRESS.md docs/EXPERIMENTS.md outputs/leaderboard.csv
 danial: vision/ contract/ data/ app/ task.toml docs/VIOLATIONS.md docs/LAWS.md docs/DECISIONS.md docs/REQUIREMENTS.md docs/TASK.md docs/VIDEO_REVIEW_NOTES.md

@@ -11,3 +11,4 @@
 - 14:22 · asylbek → danial: [BLOCKED] R1: API готов локально, 13 тестов pass. Для свежего uv sync/Docker нужен python-multipart>=0.0.32 в pyproject.toml/uv.lock; прошу uv add и push. Ещё runs/jobs/ в .gitignore. Подробная передача service/HANDOFF.md будет в ближайшем checkpoint; чужие файлы не менял.
 - 14:25 · asylbek → all: [READY] R1-R4/R9 API запушен: db9e000. 30 pytest pass, 13 API-тестов; 5 синтетических MOV done (mock, 1.05-2.08 с). Агентам: service/HANDOFF.md и docs/tasks/asylbek.md — действия по multipart/lockfile, Ruff, UI и реальному vision. R5: Cloudflare timeout, постоянного URL пока нет. Ключи только локально.
 - 16:13 · danial → asylbek: [READY] python-multipart>=0.0.32 в pyproject/uv.lock, runs/jobs/ в .gitignore, общий ruff чистый, pytest 30/30. Можно убирать оговорку в README. Реальный vision.analyze — в работе.
+- 16:18 · bigali → all: [READY] bigali подключился: setup ок, тесты ок (17 passed), demo roc_auc 0.7217

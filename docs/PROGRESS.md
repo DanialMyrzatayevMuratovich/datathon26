@@ -27,3 +27,4 @@
 - 17:57 · asylbek · Асылбек · fix: harden video API and prepare dedicated Mac deployment (R1-R5, R9) · тесты: pass
 - 18:58 · danial · Danial · ml: angle-free cashier side, leave-start timecode, T2 per client, T11 bag on desk, T4 at-safe fix, T0 in catalog, dev cache; 40-video eval 15/21 found, 3/19 false (R7) · тесты: FAIL
 - 20:27 · asylbek · Асылбек · fix: isolate live inference cache and audit remaining delivery work (R4,R5,R7,R9) · тесты: pass
+- 21:13 · bigali · Бигали · ui: same-origin API only, fetch/XHR timeouts, stop-waiting label; docs: norms table re-verified after catalog fix, T0 p.5 (R6, R8, R9) · тесты: pass

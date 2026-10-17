@@ -3,17 +3,23 @@
  * UI сервиса проверки кассовой дисциплины (R6, R10). Без сборки и CDN.
  * Сценарий: видео → POST /api/v1/analyze (X-API-Key) → опрос GET /api/v1/jobs/{id}/details раз в 2 с → вердикт и карточки.
  * Демо без бэкенда: ?mock=1 (с нарушениями), ?mock=clean (без нарушений), ?mock=fail (ошибка); ответ — ui/mock_details.json.
- * Бэкенд на другом адресе (разработка): ?api=http://localhost:8000
+ * API — только тот же origin, что и страница: сохранённый X-API-Key не уходит на чужой адрес.
  */
 
 const $ = (sel, root = document) => root.querySelector(sel);
 
 const params = new URLSearchParams(location.search);
 const MOCK = params.get('mock');
-const API = (params.get('api') || '').replace(/\/+$/, '');
+const API = '/api/v1';
 const KEY_STORE = 'cashcheck.apiKey';
 const POLL_MS = 2000;
 const NET_RETRIES = 3;
+// сколько ждём ответа, прежде чем считать связь потерянной
+const HEALTH_TIMEOUT_MS = 10_000;
+const POLL_TIMEOUT_MS = 30_000; // details с кадрами весит до нескольких МБ
+const VIDEO_TIMEOUT_MS = 180_000; // исходник ~29 МБ, на мобильном интернете — долго
+const UPLOAD_STALL_MS = 30_000; // файл не двигается — сервер сам закрывает загрузку через 15 с
+const UPLOAD_TIMEOUT_MS = 240_000; // загрузка + ответ целиком; у сервера лимит загрузки 180 с
 const MAX_BYTES = 200 * 1024 * 1024;
 const UPLOAD_SHARE = 0.15; // доля общей полосы, которую занимает загрузка файла
 const STEPS = ['upload', 'decode', 'detect', 'verify', 'report'];
@@ -74,6 +80,17 @@ class UiError extends Error {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// fetch с пределом ожидания: зависшая сеть даёт ошибку, а не бесконечный прогресс
+async function fetchTimed(url, opts, ms) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...opts, signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 const clamp01 = (x) => Math.min(1, Math.max(0, Number(x) || 0));
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -170,7 +187,7 @@ async function checkHealth() {
     return;
   }
   try {
-    const res = await fetch(`${API}/api/v1/health`, { cache: 'no-store' });
+    const res = await fetchTimed(`${API}/health`, { cache: 'no-store' }, HEALTH_TIMEOUT_MS);
     if (!res.ok) throw new Error(String(res.status));
     const h = await res.json();
     setService('ok', h.engine === 'mock' ? 'Сервис на связи · вместо модели пока заглушка' : 'Сервис на связи');
@@ -223,6 +240,7 @@ function setUploadProgress(frac) {
   const pct = setBar(clamp01(frac) * UPLOAD_SHARE);
   el.progressTitle.textContent = `${STAGE_TITLE.upload} — ${Math.round(clamp01(frac) * 100)} %`;
   markStep('upload');
+  el.cancel.textContent = 'Отменить загрузку';
   return pct;
 }
 
@@ -230,6 +248,8 @@ function setAnalysisProgress(progress, stage) {
   const pct = setBar(UPLOAD_SHARE + clamp01(progress) * (1 - UPLOAD_SHARE));
   el.progressTitle.textContent = `${STAGE_TITLE[stage] || 'Анализируем видео'} — ${pct} %`;
   markStep(STEPS.includes(stage) ? stage : 'decode');
+  // API отмены нет: после загрузки кнопка только прекращает ожидание, сервер анализ доводит
+  el.cancel.textContent = 'Прекратить ожидание';
 }
 
 function startClock() {
@@ -239,7 +259,7 @@ function startClock() {
     const sec = (Date.now() - state.startedAt) / 1000;
     el.elapsed.textContent = `прошло ${mmss(sec)}`;
     if (sec > 300 && !el.progressNote.textContent) {
-      el.progressNote.textContent = 'Обработка идёт дольше 5 минут. Сервис ещё работает — можно подождать или отменить.';
+      el.progressNote.textContent = 'Обработка идёт дольше 5 минут. Сервис ещё работает — можно подождать или прекратить ожидание.';
     }
   };
   tick();
@@ -290,13 +310,30 @@ function upload(file) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     state.xhr = xhr;
-    xhr.open('POST', `${API}/api/v1/analyze`);
+    let stalled = false;
+    let stallTimer = 0;
+    // пока файл уходит, ждём движения не дольше UPLOAD_STALL_MS; после отправки ждёт уже общий xhr.timeout
+    const armStall = () => {
+      clearTimeout(stallTimer);
+      stallTimer = setTimeout(() => {
+        stalled = true;
+        xhr.abort();
+      }, UPLOAD_STALL_MS);
+    };
+    const settle = () => {
+      clearTimeout(stallTimer);
+      state.xhr = null;
+    };
+    xhr.open('POST', `${API}/analyze`);
+    xhr.timeout = UPLOAD_TIMEOUT_MS;
     for (const [k, v] of Object.entries(authHeaders())) xhr.setRequestHeader(k, v);
     xhr.upload.onprogress = (e) => {
+      armStall();
       if (e.lengthComputable) setUploadProgress(e.loaded / e.total);
     };
+    xhr.upload.onload = () => clearTimeout(stallTimer);
     xhr.onload = () => {
-      state.xhr = null;
+      settle();
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           const id = JSON.parse(xhr.responseText).job_id;
@@ -310,15 +347,22 @@ function upload(file) {
       }
     };
     xhr.onerror = () => {
-      state.xhr = null;
+      settle();
       reject(new UiError('Видео не загрузилось: нет связи с сервисом. Проверьте интернет и нажмите «Повторить».'));
     };
+    xhr.ontimeout = () => {
+      settle();
+      reject(new UiError('Сервис слишком долго не отвечал на загрузку. Проверьте интернет и нажмите «Повторить».'));
+    };
     xhr.onabort = () => {
-      state.xhr = null;
-      reject(new UiError('Загрузка отменена.', { retry: 'upload' }));
+      settle();
+      reject(stalled
+        ? new UiError('Загрузка зависла: файл перестал уходить на сервис. Проверьте интернет и нажмите «Повторить».')
+        : new UiError('Загрузка отменена.', { retry: 'upload' }));
     };
     const form = new FormData();
     form.append('file', file, file.name);
+    armStall();
     xhr.send(form);
   });
 }
@@ -332,9 +376,9 @@ async function pollOnce(run) {
   if (run !== state.runId) return;
   let res;
   try {
-    res = await fetch(`${API}/api/v1/jobs/${encodeURIComponent(state.jobId)}/details`, {
+    res = await fetchTimed(`${API}/jobs/${encodeURIComponent(state.jobId)}/details`, {
       headers: authHeaders(), cache: 'no-store',
-    });
+    }, POLL_TIMEOUT_MS);
   } catch {
     if (run !== state.runId) return;
     state.netFails += 1;
@@ -536,7 +580,7 @@ function renderPlayer(violations) {
 // страницу перезагрузили — локального файла нет, берём исходник с сервера (с ключом, поэтому через fetch, а не src)
 async function loadServerVideo(jobId, run) {
   try {
-    const res = await fetch(`${API}/api/v1/jobs/${encodeURIComponent(jobId)}/video`, { headers: authHeaders(), cache: 'no-store' });
+    const res = await fetchTimed(`${API}/jobs/${encodeURIComponent(jobId)}/video`, { headers: authHeaders(), cache: 'no-store' }, VIDEO_TIMEOUT_MS);
     if (!res.ok) throw new Error(String(res.status));
     const blob = await res.blob();
     if (run !== state.runId) return;

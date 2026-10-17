@@ -9,3 +9,4 @@
 - 12:49 · danial · Danial · data: annotations of all 42 videos, 12 violation types catalog · тесты: pass
 - 13:20 · danial · Danial · laws: NBRK acts 231/14/48 by points, verified rules catalog for 12 types; review notes, decisions · тесты: pass
 - 13:29 · danial · Danial · kickoff: contract (contract/schemas.py), vision.analyze mock, requirements, zones, tasks for asylbek/bigali/danial · тесты: pass
+- 13:51 · danial · Danial · docs: ML spec (models, metrics, double-run protocol, fine-tuning levels) · тесты: pass

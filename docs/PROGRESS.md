@@ -19,3 +19,4 @@
 - 16:15 · danial · Danial · deps: torch, transformers, supervision, opencv, mlx-vlm (Apple only); CPU torch on Linux for Docker (R7) · тесты: pass
 - 16:17 · bigali · Бигали · ui: R6 web interface + R10 player, verified e2e on service API 25/25 (UI files first landed in 3bff890) · тесты: pass
 - 16:26 · danial · Danial · ml: E1 — VLM on Grounding DINO crops: safe 8/8, screen 7/7, cash 5/6 tiled, key fails; frames/scene/vlm modules · тесты: pass
+- 16:40 · bigali · Бигали · docs: norms verified against adilet (14/14 points, 21/21 quotes; act 48 repealed -> AFR 53), SUBMISSION.md skeleton, my task spec (R8, R9) · тесты: pass

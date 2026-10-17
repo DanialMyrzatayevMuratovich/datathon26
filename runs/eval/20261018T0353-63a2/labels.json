@@ -1,0 +1,293 @@
+{
+  "X-1": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T9",
+        "t": 22.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-2": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T13",
+        "t": 10.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-3": {
+    "violation": false,
+    "events": []
+  },
+  "X-4": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T2",
+        "t": 57.0,
+        "confidence": "high"
+      },
+      {
+        "type_id": "T9",
+        "t": 68.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-5": {
+    "violation": false,
+    "events": []
+  },
+  "X-8": {
+    "violation": false,
+    "events": []
+  },
+  "X-10": {
+    "violation": false,
+    "events": []
+  },
+  "X-11": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T5",
+        "t": 18.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-12": {
+    "violation": false,
+    "events": []
+  },
+  "X-13": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T9",
+        "t": 47.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-14": {
+    "violation": false,
+    "events": []
+  },
+  "X-15": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T1",
+        "t": 15.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-16": {
+    "violation": false,
+    "events": []
+  },
+  "X-17": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T10",
+        "t": 7.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-18": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T7",
+        "t": 20.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-19": {
+    "violation": false,
+    "events": []
+  },
+  "X-20": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T4",
+        "t": 5.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-21": {
+    "violation": false,
+    "events": []
+  },
+  "X-22": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T3",
+        "t": 14.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-23": {
+    "violation": false,
+    "events": []
+  },
+  "X-24": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T11",
+        "t": 8.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-25": {
+    "violation": false,
+    "events": []
+  },
+  "X-26": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T1",
+        "t": 9.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-27": {
+    "violation": false,
+    "events": []
+  },
+  "X-28": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T5",
+        "t": 7.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-29": {
+    "violation": false,
+    "events": []
+  },
+  "X-30": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T7",
+        "t": 13.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-31": {
+    "violation": false,
+    "events": []
+  },
+  "X-32": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T6",
+        "t": 5.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-33": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T6",
+        "t": 6.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-34": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T8",
+        "t": 13.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-35": {
+    "violation": false,
+    "events": []
+  },
+  "X-37": {
+    "violation": false,
+    "events": []
+  },
+  "X-38": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T2",
+        "t": 33.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-39": {
+    "violation": false,
+    "events": []
+  },
+  "X-40": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T11",
+        "t": 17.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-43": {
+    "violation": false,
+    "events": []
+  },
+  "X-44": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T9",
+        "t": 16.0,
+        "confidence": "high"
+      }
+    ]
+  },
+  "X-45": {
+    "violation": false,
+    "events": []
+  },
+  "X-46": {
+    "violation": true,
+    "events": [
+      {
+        "type_id": "T12",
+        "t": 11.0,
+        "confidence": "high"
+      }
+    ]
+  }
+}

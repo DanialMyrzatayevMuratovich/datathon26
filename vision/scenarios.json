@@ -47,7 +47,7 @@
     {
       "id": "S03",
       "type_id": "T3",
-      "coverage": "catalog_only",
+      "coverage": "family_rule",
       "title": "Ключ в замке оставленного сейфа",
       "references": [
         [

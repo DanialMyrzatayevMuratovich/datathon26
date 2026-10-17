@@ -1,0 +1,112 @@
+{
+ "videos": 1,
+ "tp": 1,
+ "fp": 0,
+ "fn": 0,
+ "tn": 0,
+ "recall": 1.0,
+ "precision": 1.0,
+ "accuracy": null,
+ "accuracy_observed_only": 1.0,
+ "coverage": {
+  "complete": false,
+  "expected": 40,
+  "observed": 1,
+  "missing": [
+   "X-1",
+   "X-10",
+   "X-11",
+   "X-12",
+   "X-13",
+   "X-14",
+   "X-15",
+   "X-16",
+   "X-17",
+   "X-18",
+   "X-19",
+   "X-2",
+   "X-20",
+   "X-21",
+   "X-22",
+   "X-23",
+   "X-24",
+   "X-25",
+   "X-26",
+   "X-27",
+   "X-28",
+   "X-29",
+   "X-3",
+   "X-30",
+   "X-31",
+   "X-32",
+   "X-33",
+   "X-34",
+   "X-35",
+   "X-37",
+   "X-39",
+   "X-4",
+   "X-40",
+   "X-43",
+   "X-44",
+   "X-45",
+   "X-46",
+   "X-5",
+   "X-8"
+  ],
+  "extra": []
+ },
+ "joint_events": {
+  "type_and_time_1s": {
+   "tp": 1,
+   "fp": 2,
+   "fn": 21,
+   "precision": 0.333333,
+   "recall": 0.045455,
+   "f1": 0.08
+  },
+  "type_and_time_2s": {
+   "tp": 1,
+   "fp": 2,
+   "fn": 21,
+   "precision": 0.333333,
+   "recall": 0.045455,
+   "f1": 0.08
+  }
+ },
+ "event_hit_note": "type_hit/time_hit_2s are separate legacy diagnostics; use joint_events for event quality",
+ "type_hit": "1/1",
+ "time_hit_2s": "1/1",
+ "max_seconds": 15.06,
+ "per_video": {
+  "X-38": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T2",
+      "t": 33.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": true
+    }
+   ],
+   "pred_types": [
+    [
+     "T9",
+     25.0
+    ],
+    [
+     "T2",
+     32.5
+    ],
+    [
+     "T8",
+     54.5
+    ]
+   ],
+   "seconds": 15.06
+  }
+ }
+}

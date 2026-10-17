@@ -12,6 +12,8 @@ import os
 import time
 from dataclasses import dataclass, field
 
+import cv2
+import numpy as np
 from PIL import Image, ImageStat
 
 from contract.schemas import EvidenceFrame, VideoAnalysis, ViolationDetail
@@ -40,6 +42,8 @@ CASH_TYPES = ("T1", "T2", "T8")  # cash left / open / counted without the client
 EVENT_GAP_S = 15.0  # two events of one type closer than this are one case
 DOOR_WINDOW_S = 12.0  # after somebody walks into the empty cash room: the time she has to close the door
 DOOR_TURN_S = 3.0  # back to the camera this long = turned to the door to close it (X-31 4 s, X-40 4.5 s; open: <= 2 s)
+KEY_SCORE_MIN = 11.0  # lock area disturbed this much = key in the lock (X-22 12; empty keyholes after a leave 2-9,
+#                       Э12 — a thin margin chosen on one video, Danial's call 18.10 03:55)
 BAGS = ("handbag", "backpack", "suitcase")
 RETURN_MAX_S = 1.0  # a return to the post this short does not end leaving
 RETURN_STANDING_S = 2.5  # ... or this short if she stays on her feet
@@ -64,6 +68,7 @@ Q_ACTION = ("These are three frames in time order from a camera above a bank cas
             "machine; B — putting the cash away (into a safe, a drawer or a bag) or tidying up; C — something else.")
 Q_HANDLING = ("Is someone handling banknotes in this image right now — counting cash by hand or feeding money into "
               "a banknote counting machine (a machine with a slot and a display)?")
+Q_PACK = "Look closely at the desk surface. Is there a small rectangular pack of banknotes on it?"
 Q_BACK = ("Look at the person in the picture. Is the person turned away from the camera, so that we see the back of "
           "the head and the back, not the face?")
 
@@ -233,6 +238,12 @@ class Checker:
     def cash_on_desk(self, i):
         return (self.sc.desk is not None and not self.dark(i)
                 and self._ask(("cash", i), _tiles(self.frames[i][1], self.sc.desk), Q_CASH))
+
+    def cash_pack(self, i):
+        """Second look for T2: a banded pack of notes the plain cash question misses (X-38: "a light-blue package,
+        possibly a snack")."""
+        return (self.sc.desk is not None and not self.dark(i)
+                and self._ask(("pack", i), _tiles(self.frames[i][1], self.sc.desk), Q_PACK))
 
     def items_on_desk(self, i):
         return self.sc.desk is not None and self._ask(("items", i), _tiles(self.frames[i][1], self.sc.desk, 2, 2),
@@ -464,6 +475,30 @@ def leave_start(tr: Tracks, s: int, W: int) -> int:
     return min(s, i + 1)
 
 
+def key_score(im: Image.Image, safe) -> float:
+    """A key left in the safe lock, on pixels: the VLM answers "empty" even on X-22 (Э8). The keyhole is the dark dot
+    in the lock area of the safe box (5-30 % of its width, 38-68 % of its height) — darker than above, below and to
+    the right (the door edge, a vertical line, is as dark above and below). An empty keyhole leaves the door edge and
+    the door next to it the same as above and below; a key breaks them (light head, grey metal, shadow). Score =
+    mean |pixel - the same column's median above/below| on the keyhole rows between the edge and the dot."""
+    g = np.asarray(im.convert("L"), dtype=np.float32)
+    x0, y0, x1, y1 = safe
+    w, h = x1 - x0, y1 - y0
+    sx0, sx1 = int(x0 + 0.05 * w), int(x0 + 0.30 * w)
+    sy0, sy1 = int(y0 + 0.38 * h), int(y0 + 0.68 * h)
+    d = 3
+    if sx0 < 8 or sy0 < 12 or sx1 + d >= g.shape[1] or sy1 + 12 >= g.shape[0] or sx1 <= sx0 or sy1 <= sy0:
+        return 0.0
+    c = cv2.blur(g, (3, 3))
+    win = np.minimum(np.minimum(c[sy0 - d:sy1 - d, sx0:sx1], c[sy0 + d:sy1 + d, sx0:sx1]),
+                     c[sy0:sy1, sx0 + d:sx1 + d]) - c[sy0:sy1, sx0:sx1]
+    dy, dx = np.unravel_index(int(np.argmax(win)), win.shape)
+    cy, cx = sy0 + dy, sx0 + dx
+    cols = slice(cx - 6, cx - 1)
+    ref = np.median(np.concatenate([g[cy - 8:cy - 2, cols], g[cy + 4:cy + 9, cols]]), axis=0)
+    return float(np.abs(g[cy - 1:cy + 3, cols] - ref).mean())
+
+
 def entering(dets, H: int, n: int) -> list:
     """[(frame, box)] of the person who walks into a room empty at the start, followed frame to frame for
     DOOR_WINDOW_S; [] when somebody is there from the start. Raw boxes: she is first seen through the glass wall."""
@@ -540,11 +575,20 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
         if not has("T11", t_leave) and chk.items_left(j):
             events.append(Event("T11", t_leave, [t[j]], "кассир покидает рабочее место, на столе остаются личные "
                                 "вещи (сумка, верхняя одежда)", 0.6))
+        # key left in the safe lock (pixels, not the VLM: key_score); when — she walks away from the safe
+        after = sorted({min(n - 1, s + k(x)) for x in (1.0, 2.0, 3.0)})
+        if (not has("T3", t_leave) and sc.safe is not None and not chk.dark(j)
+                and np.mean([key_score(frames[x][1], sc.safe) for x in after]) >= KEY_SCORE_MIN):
+            at_safe_runs = _runs(at_safe[:s], True, k(1.0))
+            i = at_safe_runs[-1][1] if at_safe_runs else leave_start(tr, s, frames[0][1].width)
+            events.append(Event("T3", t[i], [t[i], t[after[-1]]], "кассир отходит от сейфа и покидает рабочее "
+                                "место, ключ остаётся в замке сейфа", 0.5))
 
     # 2) a client comes to the desk while cash already lies open on it (checked for every client, not the first)
+    cash_t2 = lambda x: chk.cash_on_desk(x) or chk.cash_pack(x)  # noqa: E731
     for i in client_arrivals(tr):
         j = min(n - 1, i + k(1.0))
-        if present[i] and not has("T2", t[i]) and chk.cash_on_desk(i) and chk.cash_on_desk(j):
+        if present[i] and not has("T2", t[i]) and cash_t2(i) and cash_t2(j):
             events.append(Event("T2", t[i], [t[i], t[j]], "к столу подходит клиент, а на столе открыто лежат "
                                 "наличные", 0.7))
 

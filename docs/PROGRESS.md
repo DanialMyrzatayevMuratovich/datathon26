@@ -35,3 +35,4 @@
 - 21:46 · bigali · Бигали · docs: SUBMISSION README link confirmed by asylbek review (R9) · тесты: pass
 - 21:47 · asylbek · Асылбек · feat: audit joint event quality and validate mixed real API runs (R4,R7,R9) · тесты: pass
 - 21:49 · danial · Danial · team: Iskander role (data collection/filtering, video checks, metrics, pitch & defense); markup v4 applied (X-2 -> T13, X-24 -> T11); T13 in rules catalog; T11 on leave (R7, R8, R12) · тесты: pass
+- 22:10 · danial · Danial · ml: 34/40 (85%), 0 false alarms: T11 items left on leave, T8 needs counting after client (3-frame VLM), several events per type; markup v4 metrics (R7) · тесты: pass

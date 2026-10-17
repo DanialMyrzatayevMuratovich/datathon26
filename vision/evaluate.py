@@ -86,6 +86,7 @@ def metrics(gt: dict, pred: dict) -> dict:
 
 def run(only: list[str] | None) -> Path:
     os.environ.setdefault("VISION_ENGINE", "real")
+    os.environ["DT_BATCH"] = "1"  # the engine pauses mid-video when runs/.hot appears
     from vision import analyze
 
     gt = ground_truth()

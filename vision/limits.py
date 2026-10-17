@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-THREADS = int(os.getenv("DT_THREADS", "4"))  # of 10 cores on M4 (~40 %); GPU work (MLX/MPS) is separate
+THREADS = int(os.getenv("DT_THREADS", "2"))  # of 10 cores on M4 (~20 %); GPU work (MLX/MPS) is separate
 COOLDOWN_S = float(os.getenv("DT_COOLDOWN_S", "20"))  # pause between videos in batch runs — let the fanless Air cool
 FFMPEG_THREADS = os.getenv("DT_FFMPEG_THREADS", "2")
 HOT = ROOT / "runs" / ".hot"

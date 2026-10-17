@@ -8,18 +8,20 @@ Deterministic: fixed frame times, greedy VLM, fixed thresholds below.
 
 import base64
 import io
+import os
 import time
 from dataclasses import dataclass, field
 
 from PIL import Image
 
 from contract.schemas import EvidenceFrame, VideoAnalysis, ViolationDetail
-from vision import people, scene, vlm
+from vision import limits, people, scene, vlm
 from vision.devcache import DevCache
 from vision.frames import crop, info, sample
 from vision.pipeline import describe_rule, rules_for
 
 FPS = 2.0
+BATCH = os.getenv("DT_BATCH") == "1"  # set by vision.evaluate
 LEAVE_MIN_S = 3.0  # nobody at the workplace for this long = the cashier left
 ARRIVE_MIN_S = 2.0
 TWO_AT_DESK_MIN_S = 2.0
@@ -30,6 +32,7 @@ T9_CASH_CHECKS = 4
 T9_MACHINE_EVERY_S = 4.0
 EAT_CHECK_EVERY_S = 10.0
 BAG_SCORE = 0.55
+EVENT_GAP_S = 15.0  # two events of one type closer than this are one case
 BAGS = ("handbag", "backpack", "suitcase")
 RETURN_MAX_S = 1.0  # a return to the post this short does not end leaving
 LEAVE_LOOKBACK_S = 12.0
@@ -46,6 +49,11 @@ Q_ITEMS = ("Is there a personal item — a jacket, a coat or a handbag — lying
            "documents, a laptop, a phone or a green cash-collection bag.")
 Q_MACHINE = ("This is a close-up of a banknote counting machine on a desk. Are banknotes being counted by the machine "
              "right now — notes in its top hopper or in its output tray, or a hand putting notes into it?")
+Q_ITEMS_LEFT = ("Are there drink cans, bottles, cups, food or other personal belongings lying on this desk? "
+                "Answer no for a laptop, a desk phone, a banknote counting machine, a currency detector and papers.")
+Q_ACTION = ("These are three frames in time order from a camera above a bank cash desk, just after the client left. "
+            "What is the cashier doing? Answer with one letter: A — feeding or counting banknotes in the counting "
+            "machine; B — putting the cash away (into a safe, a drawer or a bag) or tidying up; C — something else.")
 Q_HANDLING = ("Is someone handling banknotes in this image right now — counting cash by hand or feeding money into "
               "a banknote counting machine (a machine with a slot and a display)?")
 
@@ -174,6 +182,8 @@ class Checker:
 
     def _yes_no(self, im, q):
         def ask():
+            if BATCH:
+                limits.wait_if_hot()  # batch evaluation pauses mid-video too; the live service never waits
             self.calls += 1
             return vlm.yes_no([im], q)[0]
         return self.dc.vlm(im, q, ask) if self.dc else ask()
@@ -197,6 +207,25 @@ class Checker:
         the cashier her hands are hidden by her body, but the machine and the notes are visible from above."""
         zone = _union(self.sc.desk, person_box) if self.sc.desk else person_box
         return self._ask(("cash_hands", i), _tiles(self.frames[i][1], zone, 2, 2), Q_HANDLING)
+
+    def items_left(self, i):
+        """Personal things left on the desk after she left (drink cans, food, bag) — E3: X-24 yes, 11 leaves no."""
+        return self.sc.desk is not None and self._ask(("items_left", i), _tiles(self.frames[i][1], self.sc.desk),
+                                                       Q_ITEMS_LEFT)
+
+    def counting_after(self, idx) -> bool:
+        """3 ordered desk frames after a client left: counting at the machine (A) vs putting cash away (B/C)."""
+        H, W = self.frames[0][1].height, self.frames[0][1].width
+        zone = _grow(self.sc.desk, 0.15) if self.sc.desk else [0, 0, W, H]
+        key = ("action3", tuple(idx))
+        if key not in self.cache:
+            def ask():
+                self.calls += 1
+                ims = [crop(self.frames[i][1], zone, margin=0.05, out_side=448) for i in idx]
+                return vlm.ask(ims, Q_ACTION, max_tokens=4)[0]
+            self.by_kind["action3"] = self.by_kind.get("action3", 0) + 1
+            self.cache[key] = (self.dc.get(key, ask) if self.dc else ask()).strip().upper().startswith("A")
+        return self.cache[key]
 
     def machine_busy(self, i):
         return self.sc.machine is not None and self._ask(("machine", i), [crop(self.frames[i][1], self.sc.machine)],
@@ -411,8 +440,9 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
     k = lambda s: max(1, round(s * FPS))  # noqa: E731
     events: list[Event] = []
 
-    def has(type_id):
-        return any(e.type_id == type_id for e in events)
+    def has(type_id, at=None):
+        """An event of this type already reported (near `at`: a second case later in the clip is reported again)."""
+        return any(e.type_id == type_id and (at is None or abs(e.t - at) < EVENT_GAP_S) for e in events)
 
     # 1) the cashier leaves the workplace: somebody at the desk -> nobody for LEAVE_MIN_S,
     #    or nobody until the end of the video (clips often end right after she walks out)
@@ -422,34 +452,34 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
             continue  # empty from the start: nobody left
         t_leave = t[leave_start(tr, s, frames[0][1].width)]
         j = min(n - 1, s + k(2.0))  # state of the workplace 2 s after it is empty
-        if chk.screen_app(j) and not has("T5"):
+        if not has("T5", t_leave) and chk.screen_app(j):
             events.append(Event("T5", t_leave, [t[j]], "кассир покидает рабочее место, экран ноутбука остаётся "
                                 "с открытым рабочим окном (не заблокирован)", 0.8))
-        if chk.cash_on_desk(j) and not has("T1"):
+        if not has("T1", t_leave) and chk.cash_on_desk(j):
             events.append(Event("T1", t_leave, [t[j]], "кассир покидает рабочее место, на столе остаются наличные",
                                 0.75))
-        elif chk.green_bag(j) and not has("T1"):
+        elif not has("T1", t_leave) and chk.green_bag(j):
             events.append(Event("T1", t_leave, [t[j]], "кассир покидает рабочее место, на столе остаётся "
                                 "инкассаторская сумка", 0.8))
-        if chk.safe_open(j) and not has("T4"):
+        if not has("T4", t_leave) and chk.safe_open(j):
             events.append(Event("T4", t_leave, [t[j]], "кассир покидает рабочее место, дверца сейфа открыта", 0.8))
-        if not has("T11") and chk.items_on_desk(j) and chk.items_on_desk(min(n - 1, j + k(1.0))):
+        if not has("T11", t_leave) and chk.items_left(j):
             events.append(Event("T11", t_leave, [t[j]], "кассир покидает рабочее место, на столе остаются личные "
                                 "вещи (сумка, верхняя одежда)", 0.6))
 
     # 2) a client comes to the desk while cash already lies open on it (checked for every client, not the first)
     for i in client_arrivals(tr):
         j = min(n - 1, i + k(1.0))
-        if present[i] and chk.cash_on_desk(i) and chk.cash_on_desk(j) and not has("T2"):
+        if present[i] and not has("T2", t[i]) and chk.cash_on_desk(i) and chk.cash_on_desk(j):
             events.append(Event("T2", t[i], [t[i], t[j]], "к столу подходит клиент, а на столе открыто лежат "
                                 "наличные", 0.7))
 
     # 3) an outsider on the cashier's side: two or more people between the camera and the desk for a while.
     #    (People waiting by the door or seen through the glass are not on the cashier's side and do not count.)
     for s, _e in _runs([len(ps) >= 2 for ps in near_cash], True, k(TWO_AT_DESK_MIN_S)):
-        events.append(Event("T7", t[s], [t[s]], "рядом с кассиром на её стороне стола находится ещё один человек",
-                            0.65))
-        break
+        if not has("T7", t[s]):
+            events.append(Event("T7", t[s], [t[s]], "рядом с кассиром на её стороне стола находится ещё один "
+                                "человек", 0.65))
 
     # 4) safe left open: open while the cashier is away from the safe and no client is being served
     #    (an open safe during a client operation is normal practice in the clean clips)
@@ -469,7 +499,7 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
     for i in sorted(when):
         if present[i] and seated[i] and not at_safe[i] and not client_here[i] and chk.safe_open(i):
             streak.append(i)
-            if len(streak) >= 2 and not has("T4"):
+            if len(streak) >= 2 and not has("T4", t[streak[0]]):
                 events.append(Event("T4", t[streak[0]], [t[streak[0]], t[i]], "дверца сейфа остаётся открытой, "
                                     "пока кассир работает за столом", 0.75))
         else:
@@ -478,11 +508,15 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
     # 4b) counting without the client: a client was served (>= 5 s), left, and the cashier keeps handling cash
     was_client = _runs(client_here, True, k(5.0))
     for _s, e in was_client:
-        if e >= n - 1 or not all(present[e:min(n, e + k(3.0))]) or has("T8"):
+        if e >= n - 1 or not all(present[e:min(n, e + k(3.0))]) or has("T8", t[e]):
             continue
         j, j2 = min(n - 1, e + k(1.5)), min(n - 1, e + k(4.0))
+        gone = client_here[e:j2 + 1]
+        if gone and sum(gone) > 0.4 * len(gone):
+            continue  # the client is still/again there most of the window: a detection drop-out, not leaving
         ps, ps2 = near_cash[j], near_cash[j2]
-        if ps and ps2 and chk.handling_cash(j, list(ps[0].box)) and chk.handling_cash(j2, list(ps2[0].box)):
+        if (ps and ps2 and chk.handling_cash(j, list(ps[0].box)) and chk.handling_cash(j2, list(ps2[0].box))
+                and chk.counting_after([min(n - 1, e + k(x)) for x in (1.0, 2.5, 4.0)])):
             events.append(Event("T8", t[e], [t[j]], "клиент уходит, а кассир продолжает пересчёт его наличных "
                                 "уже без него", 0.7))
 
@@ -556,7 +590,11 @@ def run(path, progress=None) -> VideoAnalysis:
     sc.machine = dc.get(("scene_extra", "machine"), lambda: find_object(frames, "machine"))
     if progress:
         progress(0.2, "scene")
+    if BATCH:
+        limits.wait_if_hot()
     dets = dc.get("dets", lambda: people.detect([im for _, im in frames]))
+    if BATCH:
+        limits.wait_if_hot()
     if progress:
         progress(0.5, "detect")
     chk = Checker(frames, sc, dc)

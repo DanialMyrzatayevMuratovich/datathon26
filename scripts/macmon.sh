@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Mac health monitor for long ML runs on a fanless MacBook Air: every 15 s logs CPU load, thermal state, memory, swap,
 # battery temperature and power source to runs/macmon.log. Sets runs/.hot when the Mac is too busy or too warm
-# (CPU > 80 % for 3 samples in a row, or thermal state >= 2 "serious"); batch jobs (vision.evaluate) wait while it exists.
+# (CPU > 80 % in one sample, or thermal state >= 2 "serious"); batch jobs (vision.evaluate) wait while it exists.
 # Thermal state is macOS' own ProcessInfo.thermalState (0 nominal, 1 fair, 2 serious, 3 critical) — no sudo needed.
 # Usage: scripts/macmon.sh            (Ctrl-C to stop; run in a spare terminal tab or in the background)
 #        scripts/macmon.sh --once     (one line, for a quick check)
@@ -33,13 +33,13 @@ sample() {
 }
 
 if [ "${1:-}" = "--once" ]; then sample; exit 0; fi
-echo "macmon: журнал $log, флаг перегрузки $hot (CPU > ${CPU_LIMIT}% ×3 или thermal ≥ 2). Ctrl-C — стоп."
+echo "macmon: журнал $log, флаг перегрузки $hot (CPU > ${CPU_LIMIT}% или thermal ≥ 2). Ctrl-C — стоп."
 while :; do
   line=$(sample); echo "$line" | tee -a "$log"
   CPU=$(echo "$line" | sed -E 's/.*cpu=([0-9]+)%.*/\1/'); THERM=$(echo "$line" | sed -E 's/.*thermal=([0-9?]).*/\1/')
-  if [ "$THERM" != "?" ] && [ "$THERM" -ge 2 ]; then busy=3; fi
-  if [ "${CPU:-0}" -gt "$CPU_LIMIT" ]; then busy=$((busy + 1)); calm=0; else calm=$((calm + 1)); [ "$busy" -lt 3 ] && busy=0; fi
-  if [ "$busy" -ge 3 ] && [ ! -f "$hot" ]; then
+  if [ "$THERM" != "?" ] && [ "$THERM" -ge 2 ]; then busy=1; fi
+  if [ "${CPU:-0}" -gt "$CPU_LIMIT" ]; then busy=$((busy + 1)); calm=0; else calm=$((calm + 1)); [ "$busy" -lt 1 ] && busy=0; fi
+  if [ "$busy" -ge 1 ] && [ ! -f "$hot" ]; then
     date +%H:%M:%S > "$hot"; echo "⚠ $(date +%H:%M) Мак перегружен/греется — пакетные прогоны на паузе"
     osascript -e 'display notification "CPU > 80% или нагрев — прогоны на паузе" with title "Datathon"' >/dev/null 2>&1 || true
   fi
@@ -47,5 +47,5 @@ while :; do
     rm -f "$hot"; busy=0; echo "✔ $(date +%H:%M) остыл — прогоны продолжаются"
   fi
   case "$line" in *"power=Battery"*) echo "  ⚠ работа от батареи — подключи зарядку";; esac
-  sleep 13
+  sleep 6
 done

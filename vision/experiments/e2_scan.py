@@ -23,13 +23,17 @@ from vision.frames import crop, sample  # noqa: E402
 
 OUT = ROOT / "data" / "processed" / "e2"
 
-# name -> (scene object to crop, question)
+# name -> (scene object to crop, question, crop margin)
 QUESTIONS = {
     "machine": ("machine", "This is a close-up of a banknote counting machine on a desk. Are banknotes being "
                            "counted by the machine right now — notes in its top hopper or in its output tray, or a "
-                           "hand putting notes into it?"),
-    "hands": ("desk", "Is a person holding banknotes or a stack of paper money in their hands in this image?"),
-    "door": ("door", "This is a close-up of a glass office door. Is the door open (not shut in its frame)?"),
+                           "hand putting notes into it?", 0.25),
+    "hands": ("desk", "Is a person holding banknotes or a stack of paper money in their hands in this image?", 0.2),
+    "door": ("door", "This is a close-up of a glass office door. Is the door open (not shut in its frame)?", 0.1),
+    "door_wide": ("door", "This picture shows a glass door of an office room with its frame and the wall around it. "
+                          "Is the door standing open, with a gap between the door leaf and the frame?", 0.6),
+    "document": ("desk", "Is a person showing, holding or handing over an identity card, a passport or a paper "
+                         "document across this desk?", 0.3),
 }
 
 
@@ -44,7 +48,7 @@ def scan(vid: str, name: str, every: float, t0: float, t1: float, sheet: bool = 
     path = video_path(vid)
     frames = sample(path, fps=engine.FPS)
     dc = DevCache(path)
-    key, q = QUESTIONS[name]
+    key, q, margin = QUESTIONS[name]
     box = scene_box(dc, frames, key)
     if box is None:
         dc.save()
@@ -55,7 +59,7 @@ def scan(vid: str, name: str, every: float, t0: float, t1: float, sheet: bool = 
     for t, im in frames[::step]:
         if not t0 <= t <= t1:
             continue
-        c = crop(im, box, margin={"desk": 0.2, "door": 0.1}.get(key, 0.25))
+        c = crop(im, box, margin=margin)
         ans = dc.vlm(c, q, lambda c=c: vlm.yes_no([c], q)[0])
         rows.append((t, ans))
         crops.append((t, ans, c))

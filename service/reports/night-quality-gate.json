@@ -1,0 +1,132 @@
+{
+  "purpose": "Development comparison only; never automatic promotion or a jury-score guarantee",
+  "decision": "insufficient_evidence",
+  "automatic_promotion": false,
+  "blockers": [
+    "baseline:missing_manifest",
+    "candidate:incomplete_prediction_coverage",
+    "candidate:cached_or_subset_run",
+    "candidate:incomplete_manifest_coverage",
+    "candidate:incomplete_video_hashes"
+  ],
+  "transitions_on_observed_videos": {},
+  "regressed_videos": [],
+  "joint_event_regression": false,
+  "event_regressions_on_observed_videos": [],
+  "independent_evaluation": "not_assessed",
+  "latency_and_memory": "not_assessed",
+  "labels_sha256": "c15aab36c786d9fd3111018952ce0b2cd89e51ff3b133d7441e5ea5f5904148f",
+  "runs": {
+    "baseline": "20261017T2207-cebf",
+    "candidate": "20261017T2331-8c4a"
+  },
+  "baseline": {
+    "coverage": {
+      "complete": true,
+      "expected": 40,
+      "observed": 40,
+      "missing": [],
+      "extra": []
+    },
+    "binary": {
+      "tp": 15,
+      "fp": 0,
+      "fn": 6,
+      "tn": 19,
+      "accuracy": 0.85,
+      "accuracy_observed_only": 0.85,
+      "recall": 0.714286,
+      "precision": 1.0
+    },
+    "joint_events": {
+      "type_and_time_1s": {
+        "tp": 7,
+        "fp": 13,
+        "fn": 15,
+        "precision": 0.35,
+        "recall": 0.318182,
+        "f1": 0.333333
+      },
+      "type_and_time_2s": {
+        "tp": 9,
+        "fp": 11,
+        "fn": 13,
+        "precision": 0.45,
+        "recall": 0.409091,
+        "f1": 0.428571
+      }
+    }
+  },
+  "candidate": {
+    "coverage": {
+      "complete": false,
+      "expected": 40,
+      "observed": 6,
+      "missing": [
+        "X-1",
+        "X-10",
+        "X-11",
+        "X-12",
+        "X-13",
+        "X-14",
+        "X-15",
+        "X-16",
+        "X-17",
+        "X-19",
+        "X-20",
+        "X-21",
+        "X-23",
+        "X-24",
+        "X-25",
+        "X-26",
+        "X-27",
+        "X-28",
+        "X-29",
+        "X-3",
+        "X-30",
+        "X-31",
+        "X-34",
+        "X-35",
+        "X-37",
+        "X-38",
+        "X-39",
+        "X-4",
+        "X-40",
+        "X-43",
+        "X-45",
+        "X-46",
+        "X-5",
+        "X-8"
+      ],
+      "extra": []
+    },
+    "binary": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 6,
+      "tn": 0,
+      "accuracy": null,
+      "accuracy_observed_only": 0.0,
+      "recall": 0.0,
+      "precision": null
+    },
+    "joint_events": {
+      "type_and_time_1s": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 22,
+        "precision": null,
+        "recall": 0.0,
+        "f1": 0.0
+      },
+      "type_and_time_2s": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 22,
+        "precision": null,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    }
+  }
+}

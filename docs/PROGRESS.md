@@ -47,3 +47,4 @@
 - 23:34 · asylbek · Асылбек · feat: add evidence-based unseen-scenario checklist and legal guards (R7,R8) · тесты: pass
 - 23:38 · danial · Danial · ml: Grounding DINO on Apple GPU by default (2x faster, boxes equal); T9 time (last cash in visit / safe visit), leave start tolerates standing returns; validated 14+6 videos (R7) · тесты: pass
 - 23:44 · bigali · Бигали · docs: SUBMISSION on jury-style real API run 2214-5d08 (time, memory, reproducibility), T13 interpretation (R4, R8, R9) · тесты: pass
+- 00:17 · asylbek · Асылбек · feat: audit candidate regressions and define bounded generalization experiment (R7,R11) · тесты: pass

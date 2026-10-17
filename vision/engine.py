@@ -20,7 +20,10 @@ from vision.devcache import DevCache
 from vision.frames import crop, info, sample
 from vision.pipeline import describe_rule, rules_for
 
-FPS = 2.0
+BASE_FPS = 2.0
+LONG_FPS = 2.0  # same as BASE: 1.0 lost X-4/X-13 and raised a false T12 on X-14 (jury check 20261018T0039)
+LONG_VIDEO_S = 60.0  # longer clips are sampled at LONG_FPS (time limit: 5 jury videos at once)
+FPS = BASE_FPS
 BATCH = os.getenv("DT_BATCH") == "1"  # set by vision.evaluate
 LEAVE_MIN_S = 3.0  # nobody at the workplace for this long = the cashier left
 ARRIVE_MIN_S = 2.0
@@ -168,6 +171,7 @@ class Checker:
         self.frames, self.sc, self.cache, self.calls = frames, sc, {}, 0
         self.by_kind: dict[str, int] = {}
         self.dc = dc
+        self.find_machine = None  # set by run(): finds the counting machine on demand
 
     def _ask(self, key, images, q) -> bool:
         if key not in self.cache:
@@ -568,11 +572,14 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
     #    collection bag is open, and the machine is never seen at work in the whole video. With a client — only as a
     #    refinement of a video that already shows a violation: on its own "machine not seen at work" also fires on
     #    clean client clips (E2: X-3, X-5, X-19, X-37), where the VLM misses the machine.
-    if sc.machine is not None and not has("T9"):
+    if not has("T9"):
         client_ctx = [i for s, e in _runs(client_here, True, k(5.0)) for i in range(s, e)] if events else []
         ctx = client_ctx
         if not ctx:  # a collection bag opened at the desk (X-13): its cash must be counted on the machine too
             ctx = [i for i in range(0, n, max(1, n // 6)) if present[i] and chk.green_bag(i, near=0.25)][:6]
+        if ctx and sc.machine is None and chk.find_machine:
+            sc.machine = chk.find_machine()  # looked for only when needed (3 detector calls)
+        ctx = ctx if sc.machine is not None else []
         picks = sorted(set(ctx[:: max(1, len(ctx) // T9_CASH_CHECKS)]))[:T9_CASH_CHECKS] if ctx else []
         cash = [i for i in picks if chk.cash_on_desk(i)]
         if cash and not any(chk.machine_busy(i) for i in range(0, n, k(T9_MACHINE_EVERY_S)) if present[i]):
@@ -586,8 +593,11 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
 
 
 def run(path, progress=None) -> VideoAnalysis:
+    global FPS
     started = time.perf_counter()
     vi = info(path)
+    # long clips at 1 frame/s: half the people-detection time, rule windows stay in seconds (one job per process)
+    FPS = LONG_FPS if vi.duration > LONG_VIDEO_S else BASE_FPS
     with sample(path, fps=FPS) as frames:
         return _run_sampled(path, frames, vi, started, progress)
 
@@ -601,7 +611,7 @@ def _run_sampled(path, frames, vi, started, progress):
     for key, alt in (("desk", "table"), ("laptop", "monitor"), ("safe", "cabinet")):
         if getattr(sc, key) is None:
             setattr(sc, key, dc.get(("scene_extra", alt), lambda alt=alt: find_object(frames, alt)))
-    sc.machine = dc.get(("scene_extra", "machine"), lambda: find_object(frames, "machine"))
+    chk_machine = lambda: dc.get(("scene_extra", "machine"), lambda: find_object(frames, "machine"))  # noqa: E731
     if progress:
         progress(0.2, "scene")
     if BATCH:
@@ -614,6 +624,7 @@ def _run_sampled(path, frames, vi, started, progress):
     if progress:
         progress(0.5, "detect")
     chk = Checker(frames, sc, dc)
+    chk.find_machine = chk_machine
     events = detect_events(frames, dets, sc, chk)
     dc.save()
     if progress:

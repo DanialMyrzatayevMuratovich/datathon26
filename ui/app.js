@@ -127,8 +127,21 @@ function saveKey(value) {
     else localStorage.removeItem(KEY_STORE);
   } catch { /* приватный режим: ключ просто не запомнится */ }
 }
+/* Ключ из мессенджера или терминала часто приходит с невидимыми символами, кавычками или целой строкой
+   «API_KEY=…»: убираем это. Заголовок HTTP принимает только латиницу — остальное ловим до отправки. */
+function cleanKey(raw) {
+  return (raw || '')
+    .replace(/[\s\u00A0\u200B-\u200D\u2060\uFEFF]/g, '')
+    .replace(/^API_KEY=/i, '')
+    .replace(/^["'`«»“”‘’]+|["'`«»“”‘’]+$/g, '');
+}
+function keyProblem(key) {
+  return /[^\x21-\x7E]/.test(key)
+    ? 'Ключ скопирован с лишними символами (русская буква или кавычки). Скопируйте ключ заново и вставьте.'
+    : '';
+}
 function authHeaders() {
-  const key = el.key.value.trim();
+  const key = cleanKey(el.key.value);
   return key ? { 'X-API-Key': key } : {};
 }
 
@@ -278,8 +291,13 @@ function stopTimers() {
 
 async function start() {
   if (!state.file && !MOCK) return;
-  if (!MOCK && !el.key.value.trim()) {
+  if (!MOCK && !cleanKey(el.key.value)) {
     showFormError('Введите API-ключ — без него сервис не примет видео.');
+    el.key.focus();
+    return;
+  }
+  if (!MOCK && keyProblem(cleanKey(el.key.value))) {
+    showFormError(keyProblem(cleanKey(el.key.value)));
     el.key.focus();
     return;
   }
@@ -725,7 +743,7 @@ function openFrame(src, caption) {
 
 el.key.value = loadKey();
 el.key.addEventListener('input', () => {
-  saveKey(el.key.value.trim());
+  saveKey(cleanKey(el.key.value));
   hideFormError();
 });
 el.keyToggle.addEventListener('click', () => {

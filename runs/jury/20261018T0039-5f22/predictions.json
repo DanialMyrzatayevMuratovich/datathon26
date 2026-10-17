@@ -1,0 +1,288 @@
+{
+ "X-1": {
+  "verdict": "violation",
+  "violations": [
+   {
+    "type_id": "T2",
+    "timecode_sec": 1.5
+   },
+   {
+    "type_id": "T9",
+    "timecode_sec": 1.5
+   },
+   {
+    "type_id": "T12",
+    "timecode_sec": 20.0
+   }
+  ],
+  "processing_sec": 56.13
+ },
+ "X-2": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 36.852
+ },
+ "X-3": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 34.996
+ },
+ "X-4": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 55.034
+ },
+ "X-5": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 51.914
+ },
+ "X-8": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 42.438
+ },
+ "X-10": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 27.596
+ },
+ "X-11": {
+  "verdict": "violation",
+  "violations": [
+   {
+    "type_id": "T5",
+    "timecode_sec": 17.5
+   },
+   {
+    "type_id": "T4",
+    "timecode_sec": 17.5
+   }
+  ],
+  "processing_sec": 47.894
+ },
+ "X-12": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 55.301
+ },
+ "X-13": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 54.535
+ },
+ "X-14": {
+  "verdict": "violation",
+  "violations": [
+   {
+    "type_id": "T12",
+    "timecode_sec": 70.0
+   }
+  ],
+  "processing_sec": 82.167
+ },
+ "X-15": {
+  "verdict": "violation",
+  "violations": [
+   {
+    "type_id": "T1",
+    "timecode_sec": 15.5
+   }
+  ],
+  "processing_sec": 72.686
+ },
+ "X-16": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 47.168
+ },
+ "X-17": {
+  "verdict": "violation",
+  "violations": [
+   {
+    "type_id": "T10",
+    "timecode_sec": 2.5
+   }
+  ],
+  "processing_sec": 60.321
+ },
+ "X-18": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 37.834
+ },
+ "X-19": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 66.331
+ },
+ "X-20": {
+  "verdict": "violation",
+  "violations": [
+   {
+    "type_id": "T4",
+    "timecode_sec": 5.5
+   }
+  ],
+  "processing_sec": 29.175
+ },
+ "X-21": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 32.857
+ },
+ "X-22": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 44.939
+ },
+ "X-23": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 43.713
+ },
+ "X-24": {
+  "verdict": "violation",
+  "violations": [
+   {
+    "type_id": "T11",
+    "timecode_sec": 8.0
+   }
+  ],
+  "processing_sec": 46.562
+ },
+ "X-25": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 53.831
+ },
+ "X-26": {
+  "verdict": "violation",
+  "violations": [
+   {
+    "type_id": "T1",
+    "timecode_sec": 13.0
+   }
+  ],
+  "processing_sec": 40.558
+ },
+ "X-27": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 50.012
+ },
+ "X-28": {
+  "verdict": "violation",
+  "violations": [
+   {
+    "type_id": "T5",
+    "timecode_sec": 7.5
+   }
+  ],
+  "processing_sec": 46.697
+ },
+ "X-29": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 43.434
+ },
+ "X-30": {
+  "verdict": "violation",
+  "violations": [
+   {
+    "type_id": "T7",
+    "timecode_sec": 14.0
+   }
+  ],
+  "processing_sec": 24.79
+ },
+ "X-31": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 21.352
+ },
+ "X-32": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 22.994
+ },
+ "X-33": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 22.48
+ },
+ "X-34": {
+  "verdict": "violation",
+  "violations": [
+   {
+    "type_id": "T8",
+    "timecode_sec": 15.0
+   }
+  ],
+  "processing_sec": 68.545
+ },
+ "X-35": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 55.949
+ },
+ "X-37": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 34.034
+ },
+ "X-38": {
+  "verdict": "violation",
+  "violations": [
+   {
+    "type_id": "T9",
+    "timecode_sec": 25.0
+   },
+   {
+    "type_id": "T8",
+    "timecode_sec": 54.5
+   }
+  ],
+  "processing_sec": 111.725
+ },
+ "X-39": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 69.188
+ },
+ "X-40": {
+  "verdict": "violation",
+  "violations": [
+   {
+    "type_id": "T11",
+    "timecode_sec": 14.5
+   }
+  ],
+  "processing_sec": 37.052
+ },
+ "X-43": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 40.945
+ },
+ "X-44": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 31.975
+ },
+ "X-45": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 39.262
+ },
+ "X-46": {
+  "verdict": "violation",
+  "violations": [
+   {
+    "type_id": "T12",
+    "timecode_sec": 11.0
+   }
+  ],
+  "processing_sec": 39.996
+ }
+}

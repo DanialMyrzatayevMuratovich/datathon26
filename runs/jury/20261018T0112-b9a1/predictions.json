@@ -1,0 +1,31 @@
+{
+ "X-4": {
+  "verdict": "violation",
+  "violations": [
+   {
+    "type_id": "T2",
+    "timecode_sec": 55.3
+   },
+   {
+    "type_id": "T9",
+    "timecode_sec": 56.0
+   }
+  ],
+  "processing_sec": 79.85
+ },
+ "X-5": {
+  "verdict": "no_violation",
+  "violations": [],
+  "processing_sec": 64.756
+ },
+ "X-13": {
+  "verdict": "violation",
+  "violations": [
+   {
+    "type_id": "T9",
+    "timecode_sec": 32.0
+   }
+  ],
+  "processing_sec": 94.893
+ }
+}

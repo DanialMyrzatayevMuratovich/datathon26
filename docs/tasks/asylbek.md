@@ -1,21 +1,29 @@
 # asylbek — задачи
 
-<!-- Меняет только asylbek (или его агент). Напарники читают: scripts/sync.sh показывает «Сейчас» и «Нужно от других». -->
+<!-- Меняет только asylbek (или его агент); остальные читают. -->
 
-Роль: **API + бэкенд + деплой** (зона: `service/`, `tests/test_service*`, `README.md`, `scripts/run_service.sh`, `scripts/tunnel.sh`, `Dockerfile`). Контракт — `contract/schemas.py` и раздел «Контракт» в `docs/REQUIREMENTS.md` (меняет только danial; не хватает поля — пиши `[BLOCKED]`/просьбу). Распознавание вызывать только как `from vision import analyze` (сейчас заглушка, `VISION_ENGINE=mock`). Пуш — `scripts/checkpoint.sh` каждые ≤ 30 мин. Ноутбук Windows → скрипты в Git Bash.
+Роль: **API + бэкенд + деплой**. Зона: `service/`, `tests/test_service*`, `README.md`, `scripts/run_service.sh`, `scripts/tunnel.sh`, `Dockerfile`, `.dockerignore`. Контракт и распознавание не менялись.
 
 ## Сейчас
-- R1–R3 — FastAPI-сервис `service/main.py` (`uv run uvicorn service.main:app --port 8000`): `POST /api/v1/analyze` (multipart `file`, .mov, лимит 200 МБ, сохранение в `runs/jobs/<job_id>/`) → `{"job_id"}`; `GET /api/v1/jobs/{id}` → `contract.schemas.to_public(...)` строго по ТЗ; `GET /api/v1/jobs/{id}/details` → `JobDetails`; `GET /api/v1/jobs/{id}/video`; `GET /api/v1/health`. Ключ `X-API-Key` из `.env.local` (`API_KEY=…`), без ключа/неверный → 401 (кроме health и статики UI). Обработка в фоне: пул на 2 воркера (ThreadPool/ProcessPool), статус `processing` → `done`/`failed`, прогресс из колбэка `analyze(path, progress)`; таймаут 4 мин 30 с → `failed`. Результат и статус сохранять на диск (`runs/jobs/<id>/result.json`), чтобы перезапуск сервиса не терял задачи. Статика UI: смонтировать папку `ui/` на `/`. · Готово, когда: curl из раздела 10 ТЗ на `data/raw/open/videos/X-1.mov` даёт job_id, через пару секунд `done` с кадром; без ключа — 401; тесты `tests/test_service_api.py` зелёные.
+- R1–R4, R9: бэкенд реализован и проверен локально; передача команде — **[service/HANDOFF.md](../../service/HANDOFF.md)**. Там точные действия для агентов danial/bigali, команды, ограничения и результаты проверок.
+- R5: запуск и остановка работают, cloudflared установлен; Quick Tunnel не получен из-за таймаута `api.trycloudflare.com`. Нужна стабильная сеть/основной хост для публичного URL.
 
 ## Дальше
-- R5 — публичный URL: `scripts/tunnel.sh` (cloudflared quick tunnel или named tunnel → `localhost:8000`), `scripts/run_service.sh` (uvicorn + туннель + `caffeinate` на macOS), проверить с телефона через мобильный интернет. Хост — Мак Даниала (M4, 16 ГБ); запасной — твой ноутбук с тем же кодом. Отписать URL в канал `[READY] URL …` (ключ — не в канал, лично).
-- R4 — нагрузка: 5 видео разом (скрипт `scripts/load_test.sh`), время каждого < 5 мин, сервис не падает; лимит одновременных задач, очередь.
-- Надёжность: проверка расширения и того, что это видео (`ffprobe`), понятные ошибки 400/413/404, логирование, очистка старых задач.
-- R9 — README: как запустить локально (≤ 3 команды), URL, как получить ключ, примеры curl, архитектура (mermaid), раздел «Ограничения» — со слов danial.
+- После добавления зависимости лидом: проверить чистый `uv sync`, убрать временную оговорку README, проверить Docker (Linux/MLX отдельно).
+- С готовыми `vision` и `ui`: проверить полный пользовательский сценарий и пять реальных видео, настроить основной хост и публичный URL. Ключ передавать лично.
 
 ## Нужно от других
-- danial: реальный `vision.analyze` (вместо заглушки) — по мере готовности, контракт тот же.
-- bigali: UI в `ui/` ходит на `/api/v1/jobs/{id}/details` и `/api/v1/jobs/{id}/video`.
+- **danial — R1:** добавить `python-multipart>=0.0.32` в `pyproject.toml`/`uv.lock` (`uv add 'python-multipart>=0.0.32'`). Локально библиотека установлена только для тестов; свежий checkout требует этой записи. Общие зависимости не менял.
+- **danial — данные:** добавить `runs/jobs/` в `.gitignore`. Пока видео защищены автоматически создаваемым локальным `.gitignore` и `.git/info/exclude`.
+- **danial — Ruff:** исправить 7 замечаний в `data/laws/build_catalog.py` и `vision/__init__.py`; точные строки в `service/HANDOFF.md`. Наш Ruff проходит.
+- **danial — R7/R4:** реальный `vision.analyze(path, progress) -> VideoAnalysis`, веса локально; оценить время и память двух отдельных процессов. Сейчас проверен mock, не качество распознавания.
+- **bigali — R6:** UI в `ui/`, details/video требуют тот же `X-API-Key`; ключ не вшивать в статические файлы. Договорённости для подключения — `service/HANDOFF.md`.
 
 ## Готово
+- R1–R3: загрузка MOV до 200 MiB, проверка ffprobe, авторизация, публичный JSON строго по контракту, details/video/health, Range/HEAD.
+- R4 (инфраструктура): 2 процесса, ограничение 8 задач, таймаут 270 секунд с остановкой процесса; сохранение/восстановление задач, retention 24 часа, блокировка второго сервиса. Реальная ML-нагрузка ещё не оценена.
+- Тесты API: **13 passed**; Ruff нашей зоны чистый. Полный pytest до последнего добавленного теста: 29 passed; окончательный полный прогон фиксируется checkpoint в `docs/PROGRESS.md`.
+- Пять синтетических двухсекундных MOV одновременно: **5/5 done**, приём 0,219–0,250 с, полный цикл 1,047–2,078 с, engine=mock. Проверены JPEG/base64, 401 без ключа и сохранность после перезапуска. Локальный отчёт: `runs/jobs/smoke.json`, в Git не входит.
+- R5/R9: скрипты запуска/туннеля, README, Docker-рецепт с исключением данных/секретов. Docker ждёт запись multipart в lockfile; постоянный публичный URL ещё не готов.
+- Git: целостность, 17 достижимых коммитов по шаблонам секретов, отсутствие больших/приватных файлов и конфликтов проверены. Изменения только в нашей зоне и этой задаче; push через checkpoint разрешён человеком 17.10.
 - Подключился к команде: setup, тесты, demo (16.10 23:52).

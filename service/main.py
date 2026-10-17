@@ -1,0 +1,218 @@
+"""ForteBank video API. Run one ASGI process; the job manager owns two workers."""
+
+import json
+import logging
+import math
+import secrets
+import shutil
+import subprocess
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
+from starlette.concurrency import run_in_threadpool
+from starlette.datastructures import UploadFile
+from starlette.formparsers import MultiPartException
+from starlette.staticfiles import StaticFiles
+
+from contract.schemas import AnalyzeAccepted, JobDetails, to_public
+from service.config import Settings
+from service.jobs import JobManager
+
+LOG = logging.getLogger(__name__)
+
+
+def validate_video(path: Path) -> None:
+    """Only parse a local QuickTime/MP4 container; never follow playlists or URLs."""
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe", "-v", "error", "-protocol_whitelist", "file,pipe", "-format_whitelist", "mov",
+                "-show_entries", "stream=codec_type,width,height:format=duration,format_name",
+                "-of", "json", str(path),
+            ], capture_output=True, timeout=10, check=True,
+        )
+        info = json.loads(result.stdout)
+        duration = float(info["format"]["duration"])
+        video = any(
+            stream.get("codec_type") == "video" and stream.get("width", 0) > 0 and stream.get("height", 0) > 0
+            for stream in info.get("streams", [])
+        )
+        if not video or not math.isfinite(duration) or duration <= 0:
+            raise ValueError("No video stream")
+    except FileNotFoundError as exc:
+        raise HTTPException(503, "FFmpeg/ffprobe не установлен на сервере.") from exc
+    except (subprocess.SubprocessError, ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(400, "Файл не является доступным для чтения видео MOV.") from exc
+
+
+def save_upload(upload: UploadFile, destination: Path, limit: int) -> None:
+    size = 0
+    with destination.open("xb") as output:
+        while chunk := upload.file.read(1024 * 1024):
+            size += len(chunk)
+            if size > limit:
+                raise HTTPException(413, "Видео превышает лимит загрузки.")
+            output.write(chunk)
+    if size == 0:
+        raise HTTPException(400, "Пустой файл.")
+
+
+class ApiGuard:
+    """Authenticate before multipart parsing and bound streaming request bodies."""
+
+    def __init__(self, app, settings: Settings):
+        self.app = app
+        self.settings = settings
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        path = scope["path"]
+        if path.startswith("/api/") and path != "/api/v1/health":
+            headers = dict(scope["headers"])
+            supplied = headers.get(b"x-api-key", b"")
+            if not self.settings.api_key or not secrets.compare_digest(supplied, self.settings.api_key.encode()):
+                response = JSONResponse({"detail": "Неверный или отсутствующий X-API-Key."}, 401)
+                return await response(scope, receive, send)
+        original_send = send
+
+        async def private_send(message):
+            if path.startswith("/api/") and message["type"] == "http.response.start":
+                headers = [(k, v) for k, v in message.get("headers", []) if k.lower() != b"cache-control"]
+                message = {**message, "headers": headers + [(b"cache-control", b"no-store")]}
+            await original_send(message)
+
+        send = private_send
+        if path != "/api/v1/analyze" or scope["method"] != "POST":
+            return await self.app(scope, receive, send)
+        limit = self.settings.max_upload_bytes + 1024 * 1024  # multipart envelope
+        try:
+            declared = int(dict(scope["headers"]).get(b"content-length", b"0"))
+            if declared < 0:
+                raise ValueError
+        except ValueError:
+            return await JSONResponse({"detail": "Некорректный Content-Length."}, 400)(scope, receive, send)
+        if declared > limit:
+            return await JSONResponse({"detail": "Видео превышает лимит загрузки."}, 413)(scope, receive, send)
+        total = 0
+        exceeded = False
+
+        async def limited_receive():
+            nonlocal total, exceeded
+            message = await receive()
+            if message["type"] == "http.request":
+                total += len(message.get("body", b""))
+                if total > limit:
+                    exceeded = True
+                    # Starlette closes temporary upload files on this exception.
+                    raise MultiPartException("Видео превышает лимит загрузки.")
+            return message
+
+        async def limited_send(message):
+            if exceeded and message["type"] == "http.response.start":
+                message = {**message, "status": 413}
+            await send(message)
+
+        await self.app(scope, limited_receive, limited_send)
+
+
+class TeamUI(StaticFiles):
+    async def check_config(self):
+        if Path(self.directory).is_dir():
+            await super().check_config()
+
+    async def get_response(self, path, scope):
+        if not Path(self.directory).is_dir():
+            return JSONResponse({"detail": "Интерфейс ещё не подключён. API работает."}, status_code=503)
+        return await super().get_response(path, scope)
+
+
+def create_app(settings: Settings | None = None, manager: JobManager | None = None, probe=validate_video) -> FastAPI:
+    settings = settings or Settings.from_env()
+    jobs = manager or JobManager(settings)
+
+    @asynccontextmanager
+    async def lifespan(app):
+        settings.validate()
+        jobs.start()
+        app.state.jobs = jobs
+        try:
+            yield
+        finally:
+            await run_in_threadpool(jobs.close)
+
+    app = FastAPI(title="ForteBank Video API", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+    app.add_middleware(ApiGuard, settings=settings)
+
+    @app.get("/api/v1/health")
+    def health():
+        return {"ok": True, "engine": settings.engine}
+
+    @app.post("/api/v1/analyze", response_model=AnalyzeAccepted)
+    async def analyze(request: Request):
+        if not request.headers.get("content-type", "").lower().startswith("multipart/form-data"):
+            raise HTTPException(400, "Нужен multipart/form-data с полем file.")
+        if not jobs.reserve():
+            raise HTTPException(429, "Очередь заполнена. Повторите загрузку позже.", headers={"Retry-After": "5"})
+        directory = None
+        submitted = False
+        try:
+            async with request.form(max_files=1, max_fields=0) as form:
+                upload = form.get("file")
+                if not isinstance(upload, UploadFile) or len(form.multi_items()) != 1:
+                    raise HTTPException(400, "Нужно одно видео в поле file.")
+                filename = (upload.filename or "").replace("\\", "/").rsplit("/", 1)[-1][:240]
+                if Path(filename).suffix.lower() != ".mov":
+                    raise HTTPException(400, "Поддерживаются файлы .mov.")
+                if upload.size is not None and upload.size > settings.max_upload_bytes:
+                    raise HTTPException(413, "Видео превышает лимит загрузки.")
+                job_id, directory = jobs.allocate()
+                await run_in_threadpool(save_upload, upload, directory / "source.mov", settings.max_upload_bytes)
+                await run_in_threadpool(probe, directory / "source.mov")
+                jobs.submit(job_id, filename)
+                submitted = True
+                return AnalyzeAccepted(job_id=job_id)
+        finally:
+            if not submitted:
+                try:
+                    if directory is not None:
+                        # allocate() creates an immediate UUID child; never use an uploaded path.
+                        if directory.resolve().parent == settings.jobs_dir.resolve() and not directory.is_symlink():
+                            shutil.rmtree(directory)
+                finally:
+                    jobs.slots.release()
+
+    def get_job(job_id: str) -> JobDetails:
+        details = jobs.get(job_id)
+        if details is None:
+            raise HTTPException(404, "Задача не найдена или срок хранения истёк.")
+        return details
+
+    @app.get("/api/v1/jobs/{job_id}")
+    def result(job_id: str):
+        details = get_job(job_id)
+        return to_public(job_id, details.status, details.analysis).model_dump(exclude_unset=True)
+
+    @app.get("/api/v1/jobs/{job_id}/details", response_model=JobDetails)
+    def details(job_id: str):
+        return get_job(job_id)
+
+    @app.api_route("/api/v1/jobs/{job_id}/video", methods=["GET", "HEAD"])
+    def video(job_id: str):
+        get_job(job_id)
+        path = settings.jobs_dir / job_id / "source.mov"
+        if not path.is_file() or path.is_symlink():
+            raise HTTPException(404, "Исходное видео не найдено.")
+        return FileResponse(path, media_type="video/quicktime", headers={"Cache-Control": "no-store"})
+
+    @app.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
+    def unknown_api(path: str):
+        raise HTTPException(404, "Метод API не найден.")
+
+    app.mount("/", TeamUI(directory=str(settings.ui_dir), html=True, check_dir=False), name="ui")
+    return app
+
+
+app = create_app()

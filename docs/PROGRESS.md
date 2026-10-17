@@ -38,3 +38,4 @@
 - 22:10 · danial · Danial · ml: 34/40 (85%), 0 false alarms: T11 items left on leave, T8 needs counting after client (3-frame VLM), several events per type; markup v4 metrics (R7) · тесты: pass
 - 22:23 · bigali · Бигали · docs: SUBMISSION on markup v4 and run 2207-cebf, T13 norm verified with remark (R8, R9) · тесты: pass
 - 22:25 · bigali · Бигали · docs: SUBMISSION joint type+time metric for run 2207-cebf via service.quality (R9) · тесты: pass
+- 22:28 · bigali · Бигали · docs: SUBMISSION no unproven any-angle claims, per asylbek review (R9) · тесты: pass

@@ -21,5 +21,5 @@
 ## Готово
 - Разбор ТЗ, `docs/TASK.md`.
 - Разметка всех 42 видео: 22 нарушения → 12 типов (`docs/VIOLATIONS.md`, `data/annotations.csv`).
-- Нормы: акты НБРК № 231, № 14, № 48 по пунктам; каталог с проверенными цитатами (`docs/LAWS.md`, `data/laws/rules_catalog.json`).
+- Нормы: акты НБРК № 231, № 14 и АРРФР № 53 (вместо утратившего силу НБРК № 48) по пунктам; каталог с проверенными цитатами (`docs/LAWS.md`, `data/laws/rules_catalog.json`).
 - Контракт `contract/schemas.py`, заглушка `vision.analyze`, требования и план (`docs/REQUIREMENTS.md`), зоны.

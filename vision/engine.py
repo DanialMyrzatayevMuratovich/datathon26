@@ -35,6 +35,7 @@ BAG_SCORE = 0.55
 EVENT_GAP_S = 15.0  # two events of one type closer than this are one case
 BAGS = ("handbag", "backpack", "suitcase")
 RETURN_MAX_S = 1.0  # a return to the post this short does not end leaving
+RETURN_STANDING_S = 2.5  # ... or this short if she stays on her feet
 LEAVE_LOOKBACK_S = 12.0
 DEPTH_BAND = 0.3  # of a person's box height: feet this close in the image = the same distance from the camera
 #                   (relative to people, not the frame: a closer or farther camera scales both)
@@ -396,6 +397,7 @@ def leave_start(tr: Tracks, s: int, W: int) -> int:
     tol = max(0.05 * W, 0.35 * sorted(b.box[2] - b.box[0] for b in sit)[len(sit) // 2])
     at_post = [b is not None and abs(b.cx - x_sit) <= tol for b in tr.cashier]
     k_ret = max(1, round(RETURN_MAX_S * FPS))
+    k_stand = max(1, round(RETURN_STANDING_S * FPS))
     lo = max(0, s - round(LEAVE_LOOKBACK_S * FPS))
     i = s - 1
     while i >= lo:
@@ -405,8 +407,9 @@ def leave_start(tr: Tracks, s: int, W: int) -> int:
         j = i
         while j >= lo and at_post[j]:
             j -= 1
-        if i - j <= k_ret and j >= lo and not at_post[j]:
-            i = j  # a short return to the post on the way out
+        standing = all(tr.cashier[x] is not None and tr.cashier[x].height > 1.25 * h_sit for x in range(j + 1, i + 1))
+        if (i - j <= k_ret or (standing and i - j <= k_stand)) and j >= lo and not at_post[j]:
+            i = j  # a short return to the post on the way out (standing: up to RETURN_STANDING_S, she did not sit)
             continue
         break
     return min(s, i + 1)
@@ -566,13 +569,17 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
     #    refinement of a video that already shows a violation: on its own "machine not seen at work" also fires on
     #    clean client clips (E2: X-3, X-5, X-19, X-37), where the VLM misses the machine.
     if sc.machine is not None and not has("T9"):
-        ctx = [i for s, e in _runs(client_here, True, k(5.0)) for i in range(s, e)] if events else []
+        client_ctx = [i for s, e in _runs(client_here, True, k(5.0)) for i in range(s, e)] if events else []
+        ctx = client_ctx
         if not ctx:  # a collection bag opened at the desk (X-13): its cash must be counted on the machine too
             ctx = [i for i in range(0, n, max(1, n // 6)) if present[i] and chk.green_bag(i, near=0.25)][:6]
         picks = sorted(set(ctx[:: max(1, len(ctx) // T9_CASH_CHECKS)]))[:T9_CASH_CHECKS] if ctx else []
         cash = [i for i in picks if chk.cash_on_desk(i)]
         if cash and not any(chk.machine_busy(i) for i in range(0, n, k(T9_MACHINE_EVERY_S)) if present[i]):
-            i = cash[0]
+            # when: with a client — the last moment cash is seen in the visit (counting comes after the handover);
+            # from a collection bag — when she takes the uncounted cash to the safe
+            i = cash[-1] if client_ctx else next((x for x in range(cash[0] + 1, n)
+                                                  if at_safe[x] and not at_safe[x - 1]), cash[0])
             events.append(Event("T9", t[i], [t[i]], "операция с наличными проходит вручную: купюры на столе, "
                                 "счётная машина за всё видео не используется", 0.6))
     return events

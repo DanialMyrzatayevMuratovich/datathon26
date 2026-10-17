@@ -45,3 +45,4 @@
 - 23:01 · danial · Danial · merge: METRICS keeps asylbek audit note + jury-style API check (R7) · тесты: pass
 - 23:11 · danial · Danial · ml: T13 -> interpretation with full quote (bigali review); E4 few-shot door probe (rejected); GDINO device switch (cpu default) (R7, R8) · тесты: pass
 - 23:34 · asylbek · Асылбек · feat: add evidence-based unseen-scenario checklist and legal guards (R7,R8) · тесты: pass
+- 23:38 · danial · Danial · ml: Grounding DINO on Apple GPU by default (2x faster, boxes equal); T9 time (last cash in visit / safe visit), leave start tolerates standing returns; validated 14+6 videos (R7) · тесты: pass

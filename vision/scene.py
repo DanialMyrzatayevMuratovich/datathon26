@@ -17,8 +17,9 @@ from vision.frames import clipped_box
 ROOT = Path(__file__).resolve().parent.parent
 MODELS_DIR = Path(os.getenv("MODELS_DIR", ROOT.parent / "models"))
 GDINO = MODELS_DIR / "grounding-dino-tiny"
-# DT_GDINO_DEVICE=mps runs it on the Apple GPU (several times faster than CPU); default cpu until validated
-DEVICE = os.getenv("DT_GDINO_DEVICE", "cpu")
+# Apple GPU when present: 0.9 s vs 1.9 s per call, boxes equal within 0.1 px (vision/experiments/gdino_device.py,
+# 17.10); DT_GDINO_DEVICE=cpu forces the CPU
+DEVICE = os.getenv("DT_GDINO_DEVICE", "mps" if torch.backends.mps.is_available() else "cpu")
 
 # key -> (phrase for the prompt, words that identify the returned label)
 OBJECTS = {

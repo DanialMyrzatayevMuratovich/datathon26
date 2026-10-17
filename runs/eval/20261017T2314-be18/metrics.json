@@ -1,0 +1,331 @@
+{
+ "videos": 14,
+ "tp": 9,
+ "fp": 0,
+ "fn": 0,
+ "tn": 5,
+ "recall": 1.0,
+ "precision": 1.0,
+ "accuracy": null,
+ "accuracy_observed_only": 1.0,
+ "coverage": {
+  "complete": false,
+  "expected": 40,
+  "observed": 14,
+  "missing": [
+   "X-10",
+   "X-14",
+   "X-16",
+   "X-17",
+   "X-18",
+   "X-19",
+   "X-2",
+   "X-20",
+   "X-21",
+   "X-22",
+   "X-3",
+   "X-30",
+   "X-31",
+   "X-32",
+   "X-33",
+   "X-34",
+   "X-35",
+   "X-37",
+   "X-39",
+   "X-40",
+   "X-43",
+   "X-44",
+   "X-45",
+   "X-46",
+   "X-5",
+   "X-8"
+  ],
+  "extra": []
+ },
+ "joint_events": {
+  "type_and_time_1s": {
+   "tp": 4,
+   "fp": 10,
+   "fn": 18,
+   "precision": 0.285714,
+   "recall": 0.181818,
+   "f1": 0.222222
+  },
+  "type_and_time_2s": {
+   "tp": 5,
+   "fp": 9,
+   "fn": 17,
+   "precision": 0.357143,
+   "recall": 0.227273,
+   "f1": 0.277778
+  }
+ },
+ "event_hit_note": "type_hit/time_hit_2s are separate legacy diagnostics; use joint_events for event quality",
+ "type_hit": "9/10",
+ "time_hit_2s": "6/10",
+ "max_seconds": 109.9,
+ "per_video": {
+  "X-1": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T9",
+      "t": 22.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": true
+    }
+   ],
+   "pred_types": [
+    [
+     "T2",
+     1.5
+    ],
+    [
+     "T9",
+     1.5
+    ],
+    [
+     "T12",
+     20.0
+    ]
+   ],
+   "seconds": 53.79
+  },
+  "X-4": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T2",
+      "t": 57.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": true
+    },
+    {
+     "gt": {
+      "type_id": "T9",
+      "t": 68.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": false
+    }
+   ],
+   "pred_types": [
+    [
+     "T2",
+     55.0
+    ],
+    [
+     "T9",
+     55.0
+    ]
+   ],
+   "seconds": 82.34
+  },
+  "X-11": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T5",
+      "t": 18.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": true
+    }
+   ],
+   "pred_types": [
+    [
+     "T5",
+     17.5
+    ],
+    [
+     "T4",
+     17.5
+    ]
+   ],
+   "seconds": 48.29
+  },
+  "X-12": {
+   "gt": false,
+   "pred": false,
+   "events": [],
+   "pred_types": [],
+   "seconds": 56.4
+  },
+  "X-13": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T9",
+      "t": 47.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": false
+    }
+   ],
+   "pred_types": [
+    [
+     "T9",
+     31.5
+    ]
+   ],
+   "seconds": 109.9
+  },
+  "X-15": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T1",
+      "t": 15.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": true
+    }
+   ],
+   "pred_types": [
+    [
+     "T1",
+     15.5
+    ]
+   ],
+   "seconds": 53.61
+  },
+  "X-23": {
+   "gt": false,
+   "pred": false,
+   "events": [],
+   "pred_types": [],
+   "seconds": 41.39
+  },
+  "X-24": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T11",
+      "t": 8.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": true
+    }
+   ],
+   "pred_types": [
+    [
+     "T11",
+     8.0
+    ]
+   ],
+   "seconds": 48.61
+  },
+  "X-25": {
+   "gt": false,
+   "pred": false,
+   "events": [],
+   "pred_types": [],
+   "seconds": 53.35
+  },
+  "X-26": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T1",
+      "t": 9.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": false
+    }
+   ],
+   "pred_types": [
+    [
+     "T1",
+     13.0
+    ]
+   ],
+   "seconds": 35.56
+  },
+  "X-27": {
+   "gt": false,
+   "pred": false,
+   "events": [],
+   "pred_types": [],
+   "seconds": 51.01
+  },
+  "X-28": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T5",
+      "t": 7.0,
+      "confidence": "high"
+     },
+     "type_hit": true,
+     "time_hit": true
+    }
+   ],
+   "pred_types": [
+    [
+     "T5",
+     7.5
+    ]
+   ],
+   "seconds": 38.67
+  },
+  "X-29": {
+   "gt": false,
+   "pred": false,
+   "events": [],
+   "pred_types": [],
+   "seconds": 42.57
+  },
+  "X-38": {
+   "gt": true,
+   "pred": true,
+   "events": [
+    {
+     "gt": {
+      "type_id": "T2",
+      "t": 33.0,
+      "confidence": "high"
+     },
+     "type_hit": false,
+     "time_hit": false
+    }
+   ],
+   "pred_types": [
+    [
+     "T9",
+     25.0
+    ],
+    [
+     "T8",
+     54.5
+    ]
+   ],
+   "seconds": 108.92
+  }
+ }
+}

@@ -1,0 +1,44 @@
+{
+ "X-2": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 17.07,
+  "processing_sec": 40.36,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=10+asked=cash:7,eat:2,safe:1"
+ },
+ "X-18": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 22.6,
+  "processing_sec": 41.23,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=10+asked=cash:6,eat:3,safe:1"
+ },
+ "X-22": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 21.03,
+  "processing_sec": 54.04,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=16+asked=cash:6,eat:2,items_left:6,safe:1,screen:1"
+ },
+ "X-32": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 21.3,
+  "processing_sec": 15.22,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=2+asked=eat:2"
+ },
+ "X-33": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 14.33,
+  "processing_sec": 18.86,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=3+asked=eat:2,safe:1"
+ },
+ "X-44": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 20.43,
+  "processing_sec": 33.6,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=8+asked=eat:3,safe:5"
+ }
+}

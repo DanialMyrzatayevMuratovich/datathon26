@@ -35,6 +35,10 @@ def check_budget(deadline: float | None) -> None:
         raise HTTPException(408, "Истекло время приёма видео. Повторите попытку.")
 
 
+# MOV (as in the case) and MP4 (phones): the same ISO-BMFF container, ffprobe's "mov" demuxer reads both
+VIDEO_SUFFIXES = {".mov", ".mp4"}
+
+
 def validate_video(path: Path, *, deadline: float | None = None) -> None:
     """Only parse a local QuickTime/MP4 container; never follow playlists or URLs."""
     try:
@@ -60,7 +64,7 @@ def validate_video(path: Path, *, deadline: float | None = None) -> None:
         raise HTTPException(503, "FFmpeg/ffprobe не установлен на сервере.") from exc
     except (subprocess.SubprocessError, ValueError, KeyError, TypeError) as exc:
         check_budget(deadline)
-        raise HTTPException(400, "Файл не является доступным для чтения видео MOV.") from exc
+        raise HTTPException(400, "Файл не является доступным для чтения видео MOV/MP4.") from exc
 
 
 def save_upload(upload: UploadFile, destination: Path, limit: int, deadline: float | None = None) -> None:
@@ -212,8 +216,8 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
                 if not isinstance(upload, UploadFile) or len(form.multi_items()) != 1:
                     raise HTTPException(400, "Нужно одно видео в поле file.")
                 filename = (upload.filename or "").replace("\\", "/").rsplit("/", 1)[-1][:240]
-                if Path(filename).suffix.lower() != ".mov":
-                    raise HTTPException(400, "Поддерживаются файлы .mov.")
+                if Path(filename).suffix.lower() not in VIDEO_SUFFIXES:
+                    raise HTTPException(400, "Поддерживаются файлы .mov и .mp4.")
                 if upload.size is not None and upload.size > settings.max_upload_bytes:
                     raise HTTPException(413, "Видео превышает лимит загрузки.")
                 job_id, directory = jobs.allocate()

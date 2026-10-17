@@ -53,3 +53,4 @@
 - 00:28 · bigali · Бигали · docs: keyless acceptance of public real URL, UI 12/12 at 375/1280 px (R5, R6) · тесты: pass
 - 01:23 · danial · Danial · ui: clean API key (whitespace, zero-width, quotes, API_KEY= prefix) and clear error for non-Latin chars instead of setRequestHeader crash; engine back to verified 2 fps cadences (R6, R7) · тесты: pass
 - 01:38 · asylbek · Асылбек · fix: include uploads in job deadlines and audit API regressions (R4,R7) · тесты: pass
+- 01:50 · danial · Danial · service+ui: accept .mp4 as well as .mov (same container, ffprobe mov demuxer), test for mp4 upload (R1, R6) · тесты: pass

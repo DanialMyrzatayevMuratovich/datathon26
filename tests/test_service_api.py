@@ -74,6 +74,15 @@ def wait_for_job(client, job_id, timeout=8):
     pytest.fail("Job remained processing beyond the test deadline")
 
 
+def test_mp4_upload_is_accepted_like_mov(service):
+    client, _, _ = service(command=worker_command(delay=0.0))
+    files = {"file": ("phone.mp4", b"synthetic video", "video/mp4")}
+    accepted = client.post("/api/v1/analyze", headers=AUTH, files=files)
+    assert accepted.status_code == 200
+    assert wait_for_job(client, accepted.json()["job_id"])["status"] == "done"
+    assert upload(client, filename="clip.avi").status_code == 400
+
+
 def test_contract_progress_video_and_private_fields(service):
     client, _, settings = service(command=worker_command(delay=0.6))
     accepted = upload(client, filename="../../unsafe.MOV")

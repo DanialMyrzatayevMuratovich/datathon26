@@ -164,7 +164,7 @@ function httpError(status, body, phase) {
   }
   if (status === 413) return new UiError('Файл больше 200 МБ — сервис его не примет. Выберите видео поменьше.', { detail, retry: 'none' });
   if (status === 400 || status === 415 || status === 422) {
-    return new UiError('Сервис не принял файл: нужен видеофайл в формате .mov.', { detail, retry: 'none' });
+    return new UiError('Сервис не принял файл: нужен видеофайл .mov или .mp4.', { detail, retry: 'none' });
   }
   if (status === 429) {
     return new UiError('Сервис сейчас занят другими проверками. Подождите несколько секунд и нажмите «Повторить».', { detail, retry: phase });
@@ -217,8 +217,8 @@ async function checkHealth() {
 function pickFile(f) {
   if (!f) return;
   hideFormError();
-  if (!/\.mov$/i.test(f.name)) {
-    showFormError(`«${f.name}» — не .mov. Сервис принимает видео с камеры в формате .mov.`);
+  if (!/\.(mov|mp4)$/i.test(f.name)) {
+    showFormError(`«${f.name}» — не видео .mov или .mp4. Загрузите запись камеры в одном из этих форматов.`);
     return;
   }
   if (f.size > MAX_BYTES) {

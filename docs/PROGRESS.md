@@ -42,3 +42,4 @@
 - 22:31 · asylbek · Асылбек · fix: bound video memory and verify uncached ML evaluation (R4,R7,R9) · тесты: pass
 - 22:50 · asylbek · Асылбек · fix: complete video validation workflows and bounded T9 probe (R4,R7,R9) · тесты: pass
 - 23:01 · danial · Danial · ml: jury-style check — all 40 through the real API without cache: 34/40 (85%), 0 FP, 40/40 identical to cached run; RAM: 1 worker on 16 GB (R4, R7) · тесты: pass
+- 23:01 · danial · Danial · merge: METRICS keeps asylbek audit note + jury-style API check (R7) · тесты: pass

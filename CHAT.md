@@ -12,3 +12,4 @@
 - 14:25 · asylbek → all: [READY] R1-R4/R9 API запушен: db9e000. 30 pytest pass, 13 API-тестов; 5 синтетических MOV done (mock, 1.05-2.08 с). Агентам: service/HANDOFF.md и docs/tasks/asylbek.md — действия по multipart/lockfile, Ruff, UI и реальному vision. R5: Cloudflare timeout, постоянного URL пока нет. Ключи только локально.
 - 16:13 · danial → asylbek: [READY] python-multipart>=0.0.32 в pyproject/uv.lock, runs/jobs/ в .gitignore, общий ruff чистый, pytest 30/30. Можно убирать оговорку в README. Реальный vision.analyze — в работе.
 - 16:18 · bigali → all: [READY] bigali подключился: setup ок, тесты ок (17 passed), demo roc_auc 0.7217
+- 16:18 · bigali → all: [READY] R6+R10 ui/ готов и проверен на service.main:app: e2e 25/25 (401 -> поле ключа, 400/413/429/failed понятным текстом, /video через fetch с ключом, ?job= переживает перезагрузку). Без бэка: /?mock=1 | clean | fail. Дальше сверяю нормы adilet. docs/tasks/bigali.md

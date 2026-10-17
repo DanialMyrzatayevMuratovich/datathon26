@@ -14,6 +14,7 @@ import torch
 from PIL import Image
 
 from vision import limits
+from vision.frames import clipped_box
 
 ROOT = Path(__file__).resolve().parent.parent
 MODELS_DIR = Path(os.getenv("MODELS_DIR", ROOT.parent / "models"))
@@ -65,12 +66,14 @@ def detect(frames: list[Image.Image], threshold: float = 0.45, batch: int = 8) -
         with torch.no_grad():
             res = model(**inputs)
         sizes = torch.tensor([(im.height, im.width) for im in chunk])
-        for r in proc.post_process_object_detection(res, target_sizes=sizes, threshold=threshold):
+        for im, r in zip(chunk, proc.post_process_object_detection(res, target_sizes=sizes, threshold=threshold),
+                         strict=True):
             dets = []
             for s, lab, b in zip(r["scores"].tolist(), r["labels"].tolist(), r["boxes"].tolist(), strict=True):
                 name = model.config.id2label[int(lab)]
-                if name in KEEP:
-                    dets.append(Det(name, round(float(s), 3), tuple(round(v, 1) for v in b)))
+                box = clipped_box(tuple(round(v, 1) for v in b), im.width, im.height)
+                if name in KEEP and box is not None:
+                    dets.append(Det(name, round(float(s), 3), box))
             out.append(dets)
     return out
 

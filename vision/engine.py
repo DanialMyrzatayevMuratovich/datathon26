@@ -219,12 +219,13 @@ class Checker:
         zone = _grow(self.sc.desk, 0.15) if self.sc.desk else [0, 0, W, H]
         key = ("action3", tuple(idx))
         if key not in self.cache:
+            ims = [crop(self.frames[i][1], zone, margin=0.05, out_side=448) for i in idx]
             def ask():
                 self.calls += 1
-                ims = [crop(self.frames[i][1], zone, margin=0.05, out_side=448) for i in idx]
                 return vlm.ask(ims, Q_ACTION, max_tokens=4)[0]
             self.by_kind["action3"] = self.by_kind.get("action3", 0) + 1
-            self.cache[key] = (self.dc.get(key, ask) if self.dc else ask()).strip().upper().startswith("A")
+            answer = self.dc.vlm_many(ims, Q_ACTION, ask, max_tokens=4) if self.dc else ask()
+            self.cache[key] = answer.strip().upper().startswith("A")
         return self.cache[key]
 
     def machine_busy(self, i):
@@ -370,7 +371,8 @@ def tracks(frames, dets, sc: Scene) -> Tracks:
     h_sit = hs[len(hs) // 4] if hs else 0.0  # the cashier's box when seated; taller = standing (at the safe)
     in_front = lambda p: sc.safe is not None and sc.safe[0] <= p.cx <= sc.safe[2]  # noqa: E731
     return Tracks(
-        t=[f[0] for f in frames], persons=persons, at_work=at_work, near_cash=near_cash, behind=behind,
+        t=frames.timestamps if hasattr(frames, "timestamps") else [f[0] for f in frames],
+        persons=persons, at_work=at_work, near_cash=near_cash, behind=behind,
         present=[len(ps) > 0 for ps in at_work], counts=[len(ps) for ps in at_work],
         client_here=[len(ps) > 0 for ps in behind],
         at_seat=[any(_ioa(p.box, seat_zone) >= 0.25 for p in ps) for ps in near_cash],
@@ -578,8 +580,12 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
 def run(path, progress=None) -> VideoAnalysis:
     started = time.perf_counter()
     vi = info(path)
-    frames = sample(path, fps=FPS)
-    dc = DevCache(path)
+    with sample(path, fps=FPS) as frames:
+        return _run_sampled(path, frames, vi, started, progress)
+
+
+def _run_sampled(path, frames, vi, started, progress):
+    dc = DevCache(path, fps=FPS)
     if progress:
         progress(0.1, "decode")
     sc = dc.get("scene", lambda: find_scene(frames))
@@ -592,7 +598,9 @@ def run(path, progress=None) -> VideoAnalysis:
         progress(0.2, "scene")
     if BATCH:
         limits.wait_if_hot()
-    dets = dc.get("dets", lambda: people.detect([im for _, im in frames]))
+    dets = dc.get("dets", lambda: people.detect(frames.images()))
+    if len(dets) != len(frames):
+        raise ValueError("Detector frame count does not match sampled video")
     if BATCH:
         limits.wait_if_hot()
     if progress:
@@ -602,13 +610,13 @@ def run(path, progress=None) -> VideoAnalysis:
     dc.save()
     if progress:
         progress(0.9, "verify")
-    by_t = {round(t_, 3): im for t_, im in frames}
+    by_t = {round(t_, 3): i for i, t_ in enumerate(frames.timestamps)}
     violations = []
     for ev in sorted(events, key=lambda e: e.t):
         type_name, rules, why = rules_for(ev.type_id)
         times = sorted({ev.t, *ev.evidence_t})[:3]
-        frames_b64 = [EvidenceFrame(timestamp_sec=tt, image_base64=_jpeg_b64(by_t[round(tt, 3)])) for tt in times
-                      if round(tt, 3) in by_t]
+        frames_b64 = [EvidenceFrame(timestamp_sec=tt, image_base64=_jpeg_b64(frames[by_t[round(tt, 3)]][1]))
+                      for tt in times if round(tt, 3) in by_t]
         violations.append(ViolationDetail(
             type=type_name, type_id=ev.type_id, timecode_sec=round(ev.t, 1), start_sec=round(ev.t, 1),
             end_sec=round(max(times), 1), confidence=ev.confidence,

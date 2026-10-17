@@ -28,10 +28,21 @@ def apply_torch() -> None:
         _applied = True
 
 
-def wait_if_hot(poll_s: float = 10.0, log=print) -> None:
+def wait_if_hot(poll_s: float = 10.0, log=print, *, stale_s: float = 90.0, max_wait_s: float = 900.0) -> None:
+    """Wait for a live monitor to clear the flag; fail rather than ignore stale heat evidence."""
     if not HOT.exists():
         return
     log("⏸ Мак перегружен/греется (runs/.hot) — жду, пока остынет…")
-    while HOT.exists():
+    started = time.monotonic()
+    while True:
+        try:
+            age = time.time() - HOT.stat().st_mtime
+        except FileNotFoundError:
+            break
+        if age > stale_s:
+            raise RuntimeError("Thermal monitor heartbeat is stale; restart scripts/macmon.sh and retry. "
+                               "The heat flag was not removed and inference was not resumed.")
+        if time.monotonic() - started >= max_wait_s:
+            raise TimeoutError("Mac remains busy/hot; batch stopped after bounded wait. Check runs/macmon.log.")
         time.sleep(poll_s)
     log("▶ продолжаю")

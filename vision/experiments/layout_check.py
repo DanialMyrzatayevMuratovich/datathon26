@@ -5,35 +5,39 @@ client arrivals. A quick regression check of the people-layout rules (uses runs/
 """
 
 import csv
-import pickle
-from pathlib import Path
+import os
 
 from vision import engine
-from vision.devcache import _file_key
+from vision.devcache import DevCache
 from vision.evaluate import DUPLICATES, LABELS, ROOT, video_path
+from vision.frames import info
 
 CACHE = ROOT / "runs" / "cache"
-W, H = 464, 848  # all training videos
 
 
 class _Frame:
-    width, height = W, H
+    def __init__(self, width, height):
+        self.width, self.height = width, height
 
 
 def main() -> None:
+    os.environ["DT_CACHE"] = str(CACHE)
     gt: dict[str, list] = {}
     for r in csv.DictReader(LABELS.open(encoding="utf-8")):
         gt.setdefault(DUPLICATES.get(r["video"], r["video"]), [])
         if r["label"] == "violation":
             gt[DUPLICATES.get(r["video"], r["video"])].append(f"{r['type_id']}@{float(r['timecode_sec']):g}")
     for vid in sorted(gt, key=lambda v: int(v.split("-")[1])):
-        f = CACHE / f"{_file_key(video_path(vid))}.pkl"
-        if not f.exists():
-            print(vid, "no cache")
+        path = video_path(vid)
+        dc = DevCache(path, fps=engine.FPS)
+        dets, sc = dc.get("dets", lambda: None), dc.get("scene", lambda: None)
+        if dets is None or sc is None:
+            print(vid, "no current cache; run vision.evaluate --cache first")
             continue
-        d = pickle.loads(Path(f).read_bytes())
-        frames = [(i / engine.FPS, _Frame()) for i in range(len(d["dets"]))]
-        tr = engine.tracks(frames, d["dets"], d["scene"])
+        vi = info(path)
+        W, H = vi.width, vi.height
+        frames = [(i / engine.FPS, _Frame(W, H)) for i in range(len(dets))]
+        tr = engine.tracks(frames, dets, sc)
         n, k = len(tr.t), lambda s: max(1, round(s * engine.FPS))  # noqa: E731
         t7 = [tr.t[s] for s, _ in engine._runs([len(ps) >= 2 for ps in tr.near_cash], True, k(2.0))]
         leaves = [tr.t[engine.leave_start(tr, s, W)] for s, e in engine._runs(tr.present, False, 2)

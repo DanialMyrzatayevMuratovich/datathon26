@@ -71,8 +71,7 @@ def after_client():
             idx = [min(n - 1, e + k(x)) for x in (1.0, 2.5, 4.0)]
             zone = engine._grow(sc.desk, 0.15) if sc.desk else [0, 0, frames[0][1].width, frames[0][1].height]
             ims = [crop(frames[i][1], zone, margin=0.05, out_side=448) for i in idx]
-            key = ("action3", tuple(idx))
-            ans = dc.get(key, lambda ims=ims: vlm.ask(ims, Q_ACTION, max_tokens=4)[0])
+            ans = dc.vlm_many(ims, Q_ACTION, lambda ims=ims: vlm.ask(ims, Q_ACTION, max_tokens=4)[0], max_tokens=4)
             out.append((tr.t[e], ans))
         dc.save()
         print(vid, out, flush=True)

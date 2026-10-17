@@ -33,6 +33,11 @@ sample() {
 }
 
 if [ "${1:-}" = "--once" ]; then sample; exit 0; fi
+# Only remove our own marker; a killed monitor is detected by its stale heartbeat.
+cleanup() { [ "$(cat "$hot" 2>/dev/null)" != "$$" ] || rm -f "$hot"; }
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 echo "macmon: журнал $log, флаг перегрузки $hot (CPU > ${CPU_LIMIT}% или thermal ≥ 2). Ctrl-C — стоп."
 while :; do
   line=$(sample); echo "$line" | tee -a "$log"
@@ -40,9 +45,11 @@ while :; do
   if [ "$THERM" != "?" ] && [ "$THERM" -ge 2 ]; then busy=1; fi
   if [ "${CPU:-0}" -gt "$CPU_LIMIT" ]; then busy=$((busy + 1)); calm=0; else calm=$((calm + 1)); [ "$busy" -lt 1 ] && busy=0; fi
   if [ "$busy" -ge 1 ] && [ ! -f "$hot" ]; then
-    date +%H:%M:%S > "$hot"; echo "⚠ $(date +%H:%M) Мак перегружен/греется — пакетные прогоны на паузе"
+    echo "$$" > "$hot"; echo "⚠ $(date +%H:%M) Мак перегружен/греется — пакетные прогоны на паузе"
     osascript -e 'display notification "CPU > 80% или нагрев — прогоны на паузе" with title "Datathon"' >/dev/null 2>&1 || true
   fi
+  # Refresh even while a hot interval continues; stale flags must never look live.
+  [ ! -f "$hot" ] || { echo "$$" > "$hot"; }
   if [ -f "$hot" ] && [ "$calm" -ge 2 ] && { [ "$THERM" = "?" ] || [ "$THERM" -le 1 ]; }; then
     rm -f "$hot"; busy=0; echo "✔ $(date +%H:%M) остыл — прогоны продолжаются"
   fi

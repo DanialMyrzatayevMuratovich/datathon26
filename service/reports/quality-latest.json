@@ -8,31 +8,31 @@
     "extra": []
   },
   "binary": {
-    "tp": 14,
-    "fp": 1,
-    "fn": 7,
-    "tn": 18,
-    "accuracy": 0.8,
-    "accuracy_observed_only": 0.8,
-    "recall": 0.666667,
-    "precision": 0.933333
+    "tp": 15,
+    "fp": 0,
+    "fn": 6,
+    "tn": 19,
+    "accuracy": 0.85,
+    "accuracy_observed_only": 0.85,
+    "recall": 0.714286,
+    "precision": 1.0
   },
   "joint_events": {
     "type_and_time_1s": {
-      "tp": 6,
-      "fp": 14,
-      "fn": 16,
-      "precision": 0.3,
-      "recall": 0.272727,
-      "f1": 0.285714
+      "tp": 7,
+      "fp": 13,
+      "fn": 15,
+      "precision": 0.35,
+      "recall": 0.318182,
+      "f1": 0.333333
     },
     "type_and_time_2s": {
-      "tp": 8,
-      "fp": 12,
-      "fn": 14,
-      "precision": 0.4,
-      "recall": 0.363636,
-      "f1": 0.380952
+      "tp": 9,
+      "fp": 11,
+      "fn": 13,
+      "precision": 0.45,
+      "recall": 0.409091,
+      "f1": 0.428571
     }
   },
   "per_type": {
@@ -47,8 +47,10 @@
       "predicted": 1
     },
     "T11": {
-      "truth": 1,
-      "predicted": 1
+      "truth": 2,
+      "predicted": 2,
+      "matched_1s": 1,
+      "matched_2s": 1
     },
     "T12": {
       "predicted": 2,
@@ -56,13 +58,16 @@
       "matched_1s": 1,
       "matched_2s": 1
     },
+    "T13": {
+      "truth": 1
+    },
     "T2": {
       "predicted": 2,
       "truth": 2,
       "matched_2s": 1
     },
     "T3": {
-      "truth": 2
+      "truth": 1
     },
     "T4": {
       "predicted": 2,
@@ -87,27 +92,23 @@
     },
     "T8": {
       "truth": 1,
-      "predicted": 3,
+      "predicted": 2,
       "matched_2s": 1
     },
     "T9": {
-      "truth": 5,
+      "truth": 4,
       "predicted": 4
     }
   },
   "label_confidence": {
-    "medium": 6,
-    "high": 15,
-    "low": 1
+    "high": 22
   },
   "verdict_errors": [
     "X-2",
     "X-18",
     "X-22",
-    "X-24",
     "X-32",
     "X-33",
-    "X-35",
     "X-44"
   ],
   "per_video": {
@@ -117,7 +118,7 @@
         {
           "type_id": "T9",
           "t": 22.0,
-          "confidence": "medium"
+          "confidence": "high"
         }
       ],
       "predicted": [
@@ -143,9 +144,9 @@
       "verdict_outcome": "fn",
       "truth": [
         {
-          "type_id": "T9",
+          "type_id": "T13",
           "t": 10.0,
-          "confidence": "medium"
+          "confidence": "high"
         }
       ],
       "predicted": [],
@@ -174,7 +175,7 @@
         {
           "type_id": "T9",
           "t": 68.0,
-          "confidence": "medium"
+          "confidence": "high"
         }
       ],
       "predicted": [
@@ -273,7 +274,7 @@
         {
           "type_id": "T9",
           "t": 47.0,
-          "confidence": "medium"
+          "confidence": "high"
         }
       ],
       "predicted": [
@@ -341,7 +342,7 @@
         {
           "type_id": "T10",
           "t": 7.0,
-          "confidence": "medium"
+          "confidence": "high"
         }
       ],
       "predicted": [
@@ -443,18 +444,33 @@
       }
     },
     "X-24": {
-      "verdict_outcome": "fn",
+      "verdict_outcome": "tp",
       "truth": [
         {
-          "type_id": "T3",
+          "type_id": "T11",
           "t": 8.0,
-          "confidence": "medium"
+          "confidence": "high"
         }
       ],
-      "predicted": [],
+      "predicted": [
+        {
+          "type_id": "T11",
+          "timecode_sec": 8.0
+        }
+      ],
       "matches": {
-        "1": [],
-        "2": []
+        "1": [
+          {
+            "truth_index": 0,
+            "prediction_index": 0
+          }
+        ],
+        "2": [
+          {
+            "truth_index": 0,
+            "prediction_index": 0
+          }
+        ]
       }
     },
     "X-25": {
@@ -629,14 +645,9 @@
       }
     },
     "X-35": {
-      "verdict_outcome": "fp",
+      "verdict_outcome": "tn",
       "truth": [],
-      "predicted": [
-        {
-          "type_id": "T8",
-          "timecode_sec": 54.5
-        }
-      ],
+      "predicted": [],
       "matches": {
         "1": [],
         "2": []
@@ -667,7 +678,7 @@
         },
         {
           "type_id": "T8",
-          "timecode_sec": 27.0
+          "timecode_sec": 54.5
         }
       ],
       "matches": {
@@ -719,7 +730,7 @@
         {
           "type_id": "T9",
           "t": 16.0,
-          "confidence": "low"
+          "confidence": "high"
         }
       ],
       "predicted": [],
@@ -769,7 +780,7 @@
     }
   },
   "input_sha256": {
-    "predictions": "e4d5c23d966bfbfadfee64e32a5fd91f85d7ca47511302a9c7a63a37a94b46e7",
-    "labels": "4af812f183303ca370586da9fc71a764db1851217cedc874612bce057e539225"
+    "predictions": "d74b18b5791fdc945fc596b720b0cd9b429b7d95b90d5b2f0057ce0c05e40913",
+    "labels": "c15aab36c786d9fd3111018952ce0b2cd89e51ff3b133d7441e5ea5f5904148f"
   }
 }

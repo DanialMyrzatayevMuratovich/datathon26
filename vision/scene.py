@@ -12,6 +12,7 @@ import torch
 from PIL import Image
 
 from vision import limits
+from vision.frames import clipped_box
 
 ROOT = Path(__file__).resolve().parent.parent
 MODELS_DIR = Path(os.getenv("MODELS_DIR", ROOT.parent / "models"))
@@ -63,8 +64,9 @@ def detect(im: Image.Image, keys: list[str], threshold: float = 0.3) -> dict[str
     # text_labels can be longer than boxes in transformers 5 for single-phrase prompts: pair by position
     for box, score, label in zip(res["boxes"].tolist(), res["scores"].tolist(), res["text_labels"], strict=False):
         k = _key_of(label, keys)
-        if k:
-            found[k].append(([round(v, 1) for v in box], round(float(score), 3)))
+        valid = clipped_box([round(v, 1) for v in box], im.width, im.height)
+        if k and valid is not None:
+            found[k].append((list(valid), round(float(score), 3)))
     return {k: sorted(v, key=lambda x: -x[1]) for k, v in found.items()}
 
 

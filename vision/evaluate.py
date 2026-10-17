@@ -9,19 +9,23 @@ Duplicates (X-47 = X-4, X-48 = X-5) are one video; X-4 then has two labelled eve
 """
 
 import argparse
-import csv
+import hashlib
 import json
 import os
 import secrets
+import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
+
+from service.quality import audit, labels, video_id
+from vision.devcache import model_identity
+from vision.labels import DUPLICATES  # noqa: F401 - historical experiment imports
 
 ROOT = Path(__file__).resolve().parent.parent
 VIDEOS = ROOT / "data" / "raw" / "open" / "videos"
 LABELS = ROOT / "data" / "annotations.csv"
 RUNS = ROOT / "runs" / "eval"
-DUPLICATES = {"X-47": "X-4", "X-48": "X-5"}
 DT_OK = 2.0
 
 
@@ -33,19 +37,11 @@ def video_path(vid: str) -> Path:
 
 
 def ground_truth() -> dict[str, dict]:
-    gt: dict[str, dict] = {}
-    with LABELS.open(encoding="utf-8") as f:
-        for r in csv.DictReader(f):
-            vid = DUPLICATES.get(r["video"], r["video"])
-            g = gt.setdefault(vid, {"violation": False, "events": []})
-            if r["label"] == "violation":
-                g["violation"] = True
-                g["events"].append({"t": float(r["timecode_sec"]), "type_id": r["type_id"],
-                                    "confidence": r["confidence"]})
-    return gt
+    return labels(LABELS)
 
 
 def metrics(gt: dict, pred: dict) -> dict:
+    checked = audit(gt, pred)
     tp = fp = fn = tn = 0
     ev_total = ev_type = ev_time = 0
     per_video = {}
@@ -77,23 +73,61 @@ def metrics(gt: dict, pred: dict) -> dict:
     return {
         "videos": n, "tp": tp, "fp": fp, "fn": fn, "tn": tn,
         "recall": round(tp / max(1, tp + fn), 3), "precision": round(tp / max(1, tp + fp), 3),
-        "accuracy": round((tp + tn) / max(1, n), 3),
+        "accuracy": checked["binary"]["accuracy"],
+        "accuracy_observed_only": checked["binary"]["accuracy_observed_only"],
+        "coverage": checked["coverage"], "joint_events": checked["joint_events"],
+        "event_hit_note": "type_hit/time_hit_2s are separate legacy diagnostics; use joint_events for event quality",
         "type_hit": f"{ev_type}/{ev_total}", "time_hit_2s": f"{ev_time}/{ev_total}",
         "max_seconds": max((v["seconds"] for v in per_video.values()), default=0),
         "per_video": per_video,
     }
 
 
-def run(only: list[str] | None) -> Path:
-    os.environ.setdefault("VISION_ENGINE", "real")
+def sha256(path: Path) -> str:
+    with path.open("rb") as stream:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
+
+
+def source_identity() -> dict:
+    paths = [*sorted((ROOT / "vision").rglob("*.py")), ROOT / "service/quality.py",
+             ROOT / "uv.lock", ROOT / "scripts/download_models.sh"]
+    return {p.relative_to(ROOT).as_posix(): sha256(p) for p in paths if p.is_file()}
+
+
+def configure(cache: bool) -> None:
+    # Explicit validation cannot silently inherit the demo engine or a tuning cache.
+    os.environ["VISION_ENGINE"] = "real"
+    if cache:
+        os.environ["DT_CACHE"] = str(ROOT / "runs" / "cache")
+    else:
+        os.environ.pop("DT_CACHE", None)
+
+
+def run(only: list[str] | None, *, cache: bool = False) -> Path:
+    configure(cache)
     os.environ["DT_BATCH"] = "1"  # the engine pauses mid-video when runs/.hot appears
     from vision import analyze
 
     gt = ground_truth()
-    vids = only or sorted(gt, key=lambda v: int(v.split("-")[1]))
+    vids = [video_id(v) for v in only] if only else sorted(gt, key=lambda v: int(v.split("-")[1]))
+    if len(set(vids)) != len(vids) or set(vids) - set(gt):
+        raise ValueError("Subset must contain unique, known video IDs")
+    paths = {vid: video_path(vid) for vid in vids}  # fail before loading any model
     run_id = f"{datetime.now():%Y%m%dT%H%M}-{secrets.token_hex(2)}"
     out = RUNS / run_id
     out.mkdir(parents=True, exist_ok=True)
+    manifest = {
+        "schema_version": 1, "status": "running", "engine": "real", "cache_enabled": cache,
+        "subset": bool(only), "expected": sorted(gt), "requested": vids,
+        "labels_sha256": sha256(LABELS), "source_sha256": source_identity(),
+        "video_sha256": {vid: sha256(path) for vid, path in paths.items()},
+        "models": [model_identity(name) for name in (
+            os.getenv("VLM_MODEL", "qwen3-vl-4b-instruct-mlx-4bit"), "rtdetr-v2-r50", "grounding-dino-tiny")],
+        "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+        "timing_note": "Cached timings are not inference/SLA measurements" if cache else "Uncached local inference",
+    }
+    (out / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    (out / "labels.json").write_text(json.dumps(gt, ensure_ascii=False, indent=2), encoding="utf-8")
     pred = {}
     from vision.limits import COOLDOWN_S, wait_if_hot
 
@@ -102,7 +136,9 @@ def run(only: list[str] | None) -> Path:
             time.sleep(COOLDOWN_S)  # one video at a time, with a cool-down pause
         wait_if_hot()
         t0 = time.perf_counter()
-        a = analyze(video_path(vid)).model_dump()
+        a = analyze(paths[vid]).model_dump()
+        if not a.get("engine", "").startswith("rules+"):
+            raise ValueError("Evaluation requires the real rules/VLM engine")
         for v in a["violations"]:  # keep the file small: frames are re-creatable
             v["evidence_frames"] = [{"timestamp_sec": f["timestamp_sec"]} for f in v["evidence_frames"]]
         pred[vid] = a
@@ -113,14 +149,32 @@ def run(only: list[str] | None) -> Path:
         (out / "predictions.json").write_text(json.dumps(pred, ensure_ascii=False, indent=1), encoding="utf-8")
     m = metrics(gt, pred)
     (out / "metrics.json").write_text(json.dumps(m, ensure_ascii=False, indent=1), encoding="utf-8")
+    manifest.update(status="complete", completed=sorted(pred), predictions_sha256=sha256(out / "predictions.json"))
+    (out / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(json.dumps({k: v for k, v in m.items() if k != "per_video"}, ensure_ascii=False))
     print(f"→ {out.relative_to(ROOT)}")
     return out
 
 
 def compare(a: str, b: str) -> int:
+    try:
+        ma, mb = [json.loads((RUNS / name / "manifest.json").read_text(encoding="utf-8")) for name in (a, b)]
+        for name, manifest in ((a, ma), (b, mb)):
+            if (manifest["status"] != "complete" or manifest["engine"] != "real" or manifest["cache_enabled"]
+                    or manifest["subset"] or manifest["completed"] != manifest["expected"]
+                    or sha256(RUNS / name / "predictions.json") != manifest["predictions_sha256"]):
+                raise ValueError("Need complete, uncached real runs with intact predictions")
+        for field in ("labels_sha256", "source_sha256", "video_sha256", "models", "expected"):
+            if ma[field] != mb[field]:
+                raise ValueError(f"Run provenance differs: {field}")
+    except (OSError, KeyError, ValueError) as exc:
+        print(f"✖ нельзя подтвердить воспроизводимость: {exc}")
+        return 2
     pa = json.loads((RUNS / a / "predictions.json").read_text(encoding="utf-8"))
     pb = json.loads((RUNS / b / "predictions.json").read_text(encoding="utf-8"))
+    if set(pa) != set(ma["expected"]) or set(pb) != set(mb["expected"]):
+        print("✖ неполное покрытие предсказаний")
+        return 2
     diffs = []
     for vid in sorted(set(pa) | set(pb)):
         x, y = pa.get(vid), pb.get(vid)
@@ -135,16 +189,18 @@ def compare(a: str, b: str) -> int:
 
 
 def main() -> None:
+    global VIDEOS, LABELS
     p = argparse.ArgumentParser()
     p.add_argument("--only", default="")
     p.add_argument("--cache", action="store_true", help="reuse detections/VLM answers (tuning only, not for metrics)")
     p.add_argument("--compare", nargs=2, metavar=("RUN1", "RUN2"))
+    p.add_argument("--videos", type=Path, default=VIDEOS)
+    p.add_argument("--labels", type=Path, default=LABELS)
     a = p.parse_args()
     if a.compare:
         raise SystemExit(compare(*a.compare))
-    if a.cache:
-        os.environ["DT_CACHE"] = str(ROOT / "runs" / "cache")
-    run([v.strip() for v in a.only.split(",") if v.strip()] or None)
+    VIDEOS, LABELS = a.videos, a.labels
+    run([v.strip() for v in a.only.split(",") if v.strip()] or None, cache=a.cache)
 
 
 if __name__ == "__main__":

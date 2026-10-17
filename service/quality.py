@@ -12,7 +12,7 @@ import math
 from collections import Counter
 from pathlib import Path
 
-from vision.evaluate import DUPLICATES
+from vision.labels import DUPLICATES
 
 
 def video_id(value: str) -> str:

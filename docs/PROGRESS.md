@@ -24,3 +24,4 @@
 - 16:53 · bigali · Бигали · docs: R5 public access verified via quick tunnel, strict jury check 0 issues (help for asylbek) · тесты: pass
 - 16:56 · danial · Danial · ml: engine v1 (detection+rules+VLM), evaluate with double-run compare, gentle mode (4 threads, cooldown), mac monitor (R7) · тесты: pass
 - 17:03 · danial · Danial · laws: T5 -> ARDFM act 53 (NBRK 48 repealed 03.04.2026), T4 -> interpretation, repeal guard in catalog builder (R8) · тесты: pass
+- 17:57 · asylbek · Асылбек · fix: harden video API and prepare dedicated Mac deployment (R1-R5, R9) · тесты: pass

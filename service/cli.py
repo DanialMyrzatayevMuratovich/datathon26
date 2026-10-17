@@ -11,11 +11,14 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from dataclasses import replace
 from pathlib import Path
 
 from dotenv import dotenv_values, load_dotenv
 
-from service.config import ROOT
+from service.acceptance import check_auth, opener, validate_public
+from service.config import ROOT, Settings
+from service.preflight import inspect
 
 
 def init_key(path: Path = ROOT / ".env.local") -> None:
@@ -32,7 +35,7 @@ def init_key(path: Path = ROOT / ".env.local") -> None:
     print("API_KEY сохранён в .env.local. Передайте его жюри лично; не коммитьте этот файл.")
 
 
-def check_one(url: str, key: str, path: Path) -> dict:
+def check_one(url: str, key: str, path: Path, strict: bool = False) -> dict:
     boundary = "video-check-" + secrets.token_hex(16)
     body = (
         f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="check.mov"\r\n'
@@ -45,14 +48,23 @@ def check_one(url: str, key: str, path: Path) -> dict:
         if data is not None:
             headers["Content-Type"] = f"multipart/form-data; boundary={boundary}"
         req = urllib.request.Request(url + path_url, data=data, headers=headers)
-        with urllib.request.urlopen(req, timeout=40) as response:
+        with opener().open(req, timeout=40) as response:
+            if strict and response.status != 200:
+                raise ValueError("Expected HTTP 200")
             return json.load(response)
 
-    job_id = request("/api/v1/analyze", body)["job_id"]
+    accepted_response = request("/api/v1/analyze", body)
+    if strict and set(accepted_response) != {"job_id"}:
+        raise ValueError("Upload response must contain only job_id")
+    job_id = accepted_response["job_id"]
+    if not isinstance(job_id, str) or not job_id or urllib.parse.quote(job_id, safe="") != job_id:
+        raise ValueError("Invalid job identifier")
     del body
     accepted = time.monotonic() - started
     while time.monotonic() - started < 300:
         public = request(f"/api/v1/jobs/{job_id}")
+        if strict:
+            validate_public(public, job_id)
         if public["status"] != "processing":
             details = request(f"/api/v1/jobs/{job_id}/details")
             return {
@@ -70,16 +82,27 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("init", help="Create a private API key without printing it")
+    doctor = sub.add_parser("doctor", help="Check tools, platform and local weights without loading models")
+    doctor.add_argument("--engine", choices=["mock", "real"])
+    doctor.add_argument("--require-ui", action="store_true")
     check = sub.add_parser("check", help="Upload videos concurrently and wait for results")
     check.add_argument("video", type=Path, nargs="?")
     check.add_argument("--synthetic", action="store_true", help="Generate a 2-second test pattern with FFmpeg")
     check.add_argument("--url", default="http://127.0.0.1:8000")
     check.add_argument("--count", type=int, default=5)
     check.add_argument("--report", type=Path)
+    check.add_argument("--strict", action="store_true", help="Validate exact public fields, JPEG evidence and HTTP 401")
     args = parser.parse_args()
     if args.command == "init":
         init_key()
         return
+    if args.command == "doctor":
+        settings = Settings.from_env()
+        if args.engine:
+            settings = replace(settings, engine=args.engine)
+        report = inspect(settings, require_ui=args.require_ui)
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        raise SystemExit(0 if report["ok"] else 1)
     load_dotenv(ROOT / ".env.local", override=False)
     key = os.getenv("API_KEY", "").strip()
     if not key:
@@ -87,7 +110,10 @@ def main() -> None:
     if not 1 <= args.count <= 8:
         parser.error("--count must be between 1 and 8")
     parsed = urllib.parse.urlparse(args.url)
-    if parsed.scheme not in {"http", "https"} or parsed.username or parsed.password or parsed.query or parsed.fragment:
+    if (
+        parsed.scheme not in {"http", "https"} or not parsed.hostname
+        or parsed.username or parsed.password or parsed.query or parsed.fragment
+    ):
         parser.error("Use an HTTP(S) service URL without credentials, query or fragment")
     if parsed.scheme == "http" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
         parser.error("Use HTTPS when sending an API key to a remote host")
@@ -103,21 +129,25 @@ def main() -> None:
             ], check=True, timeout=30)
         if not path.is_file() or path.stat().st_size > 200 * 1024 * 1024:
             parser.error("Video must exist and be at most 200 MiB")
+        auth_checks = check_auth(args.url.rstrip("/"), key) if args.strict else []
         with concurrent.futures.ThreadPoolExecutor(max_workers=args.count) as pool:
-            futures = [pool.submit(check_one, args.url.rstrip("/"), key, path) for _ in range(args.count)]
+            futures = [pool.submit(check_one, args.url.rstrip("/"), key, path, args.strict) for _ in range(args.count)]
             rows = []
             for future in futures:
                 try:
                     rows.append(future.result())
                 except (OSError, ValueError, KeyError) as exc:
                     rows.append({"status": "request_failed", "error_type": type(exc).__name__})
-        report = {"synthetic": args.synthetic, "count": args.count, "results": rows}
+        report = {"synthetic": args.synthetic, "strict": args.strict, "count": args.count,
+                  "auth_checks": auth_checks, "results": rows}
         rendered = json.dumps(report, ensure_ascii=False, indent=2)
         print(rendered)
         if args.report:
             args.report.parent.mkdir(parents=True, exist_ok=True)
             args.report.write_text(rendered + "\n", encoding="utf-8")
-        if any(row["status"] != "done" or row["elapsed_sec"] >= 300 for row in rows):
+        if any(not check["ok"] for check in auth_checks) or any(
+            row["status"] != "done" or row["elapsed_sec"] >= 300 for row in rows
+        ):
             raise SystemExit(1)
 
 

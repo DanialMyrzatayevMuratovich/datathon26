@@ -1,11 +1,12 @@
 """ForteBank video API. Run one ASGI process; the job manager owns two workers."""
 
+import asyncio
 import json
 import logging
 import math
 import secrets
-import shutil
 import subprocess
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -19,8 +20,14 @@ from starlette.staticfiles import StaticFiles
 from contract.schemas import AnalyzeAccepted, JobDetails, to_public
 from service.config import Settings
 from service.jobs import JobManager
+from service.preflight import real_engine_errors
 
 LOG = logging.getLogger(__name__)
+CSP = (
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self'; "
+    "object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+)
 
 
 def validate_video(path: Path) -> None:
@@ -79,9 +86,15 @@ class ApiGuard:
         original_send = send
 
         async def private_send(message):
-            if path.startswith("/api/") and message["type"] == "http.response.start":
-                headers = [(k, v) for k, v in message.get("headers", []) if k.lower() != b"cache-control"]
-                message = {**message, "headers": headers + [(b"cache-control", b"no-store")]}
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers", []))
+                headers += [(b"x-content-type-options", b"nosniff"), (b"referrer-policy", b"no-referrer")]
+                if path.startswith("/api/"):
+                    headers = [(k, v) for k, v in headers if k.lower() != b"cache-control"]
+                    headers.append((b"cache-control", b"no-store"))
+                else:
+                    headers.append((b"content-security-policy", CSP.encode("ascii")))
+                message = {**message, "headers": headers}
             await original_send(message)
 
         send = private_send
@@ -98,10 +111,21 @@ class ApiGuard:
             return await JSONResponse({"detail": "Видео превышает лимит загрузки."}, 413)(scope, receive, send)
         total = 0
         exceeded = False
+        timed_out = False
+        deadline = time.monotonic() + self.settings.upload_timeout_sec
 
         async def limited_receive():
-            nonlocal total, exceeded
-            message = await receive()
+            nonlocal total, exceeded, timed_out
+            remaining = deadline - time.monotonic()
+            try:
+                if remaining <= 0:
+                    raise TimeoutError
+                message = await asyncio.wait_for(receive(), timeout=min(remaining, self.settings.upload_idle_sec))
+            except TimeoutError as exc:
+                timed_out = True
+                raise MultiPartException("Истекло время загрузки видео. Повторите попытку.") from exc
+            if message["type"] == "http.disconnect":
+                raise MultiPartException("Загрузка видео прервана.")
             if message["type"] == "http.request":
                 total += len(message.get("body", b""))
                 if total > limit:
@@ -113,6 +137,8 @@ class ApiGuard:
         async def limited_send(message):
             if exceeded and message["type"] == "http.response.start":
                 message = {**message, "status": 413}
+            elif timed_out and message["type"] == "http.response.start":
+                message = {**message, "status": 408}
             await send(message)
 
         await self.app(scope, limited_receive, limited_send)
@@ -136,6 +162,10 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
     @asynccontextmanager
     async def lifespan(app):
         settings.validate()
+        if settings.engine == "real" and manager is None:
+            errors = real_engine_errors()
+            if errors:
+                raise RuntimeError("Real engine preflight failed: " + " ".join(errors))
         jobs.start()
         app.state.jobs = jobs
         try:
@@ -148,12 +178,14 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
 
     @app.get("/api/v1/health")
     def health():
-        return {"ok": True, "engine": settings.engine}
+        return JSONResponse({"ok": jobs.ready, "engine": settings.engine}, status_code=200 if jobs.ready else 503)
 
     @app.post("/api/v1/analyze", response_model=AnalyzeAccepted)
     async def analyze(request: Request):
         if not request.headers.get("content-type", "").lower().startswith("multipart/form-data"):
             raise HTTPException(400, "Нужен multipart/form-data с полем file.")
+        if not jobs.ready:
+            raise HTTPException(503, "Сервис временно не принимает задачи: проверьте диск и воркеры.")
         if not jobs.reserve():
             raise HTTPException(429, "Очередь заполнена. Повторите загрузку позже.", headers={"Retry-After": "5"})
         directory = None
@@ -174,13 +206,17 @@ def create_app(settings: Settings | None = None, manager: JobManager | None = No
                 jobs.submit(job_id, filename)
                 submitted = True
                 return AnalyzeAccepted(job_id=job_id)
+        except OSError as exc:
+            LOG.exception("Could not save upload")
+            raise HTTPException(503, "Не удалось сохранить видео. Проверьте свободное место на сервере.") from exc
         finally:
             if not submitted:
                 try:
                     if directory is not None:
-                        # allocate() creates an immediate UUID child; never use an uploaded path.
-                        if directory.resolve().parent == settings.jobs_dir.resolve() and not directory.is_symlink():
-                            shutil.rmtree(directory)
+                        try:
+                            jobs.discard_upload(directory.name)
+                        except OSError:
+                            LOG.exception("Could not remove interrupted upload %s", directory.name)
                 finally:
                     jobs.slots.release()
 

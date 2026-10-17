@@ -14,7 +14,7 @@ done
 if [ "$use_tunnel" = 1 ]; then
   command -v cloudflared >/dev/null || { echo "Missing: cloudflared (see README.md)"; exit 1; }
 fi
-uv run --frozen python -c 'from service.config import Settings; Settings.from_env().validate(); import python_multipart'
+uv run --frozen python -m service.cli doctor --require-ui
 server_pid=""; tunnel_pid=""; awake_pid=""
 cleanup() {
   trap - EXIT INT TERM

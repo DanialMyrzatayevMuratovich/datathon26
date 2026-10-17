@@ -55,6 +55,8 @@ class JobManager:
         self.records: dict[str, dict] = {}
         self.threads: list[threading.Thread] = []
         self.lock_file = None
+        self.uploads: set[str] = set()
+        self.unsaved: set[str] = set()
 
     def start(self) -> None:
         root = self.settings.jobs_dir
@@ -86,11 +88,14 @@ class JobManager:
                 details = JobDetails.model_validate(record["details"])
                 if not all(math.isfinite(float(record[key])) for key in ("created_at", "updated_at")):
                     continue
+                for key in ("created_at", "updated_at"):
+                    record[key] = float(record[key])
+                record["details"] = details.model_dump()
                 if details.job_id != directory.name:
                     continue
                 self.records[directory.name] = record
                 if details.status == "processing":
-                    self.update(directory.name, status="failed", stage="failed", error="Сервис был перезапущен.")
+                    self.fail(directory.name, "Сервис был перезапущен.")
             except (OSError, ValueError, KeyError, TypeError):
                 LOG.warning("Ignored incomplete job %s", directory.name)
         self.cleanup()
@@ -109,19 +114,38 @@ class JobManager:
         with self.lock:
             for job_id, record in self.records.items():
                 if record["details"]["status"] == "processing":
-                    self.update(job_id, status="failed", stage="failed", error="Сервис остановлен.")
+                    self.fail(job_id, "Сервис остановлен.")
         if self.lock_file is not None:
             self.lock_file.close()
             self.lock_file = None
 
     def reserve(self) -> bool:
-        return not self.stopping.is_set() and self.slots.acquire(blocking=False)
+        return self.ready and self.slots.acquire(blocking=False)
+
+    @property
+    def ready(self) -> bool:
+        with self.lock:
+            return (
+                not self.stopping.is_set() and not self.unsaved
+                and len(self.threads) >= self.settings.workers
+                and all(thread.is_alive() for thread in self.threads[:self.settings.workers])
+            )
 
     def allocate(self) -> tuple[str, Path]:
         job_id = uuid.uuid4().hex
         directory = self.settings.jobs_dir / job_id
-        directory.mkdir()
+        with self.lock:
+            directory.mkdir()
+            self.uploads.add(job_id)
         return job_id, directory
+
+    def discard_upload(self, job_id: str) -> None:
+        with self.lock:
+            try:
+                self._remove_directory(self.settings.jobs_dir / job_id)
+            finally:
+                self.uploads.discard(job_id)
+                self.unsaved.discard(job_id)
 
     def submit(self, job_id: str, filename: str) -> None:
         now = time.time()
@@ -132,7 +156,9 @@ class JobManager:
                 self.update(job_id)
             except OSError:
                 del self.records[job_id]
+                self.unsaved.discard(job_id)
                 raise
+            self.uploads.discard(job_id)
         self.pending.put(job_id)
 
     def get(self, job_id: str) -> JobDetails | None:
@@ -147,7 +173,27 @@ class JobManager:
             record = self.records[job_id]
             record["details"].update(changes)
             record["updated_at"] = time.time()
-            write_json(self.settings.jobs_dir / job_id / "result.json", record)
+            try:
+                write_json(self.settings.jobs_dir / job_id / "result.json", record)
+            except OSError:
+                self.unsaved.add(job_id)
+                raise
+            self.unsaved.discard(job_id)
+
+    def fail(self, job_id: str, error: str) -> None:
+        # update() also changes the in-memory record. A full disk must not kill the queue thread.
+        try:
+            self.update(job_id, status="failed", stage="failed", error=error, analysis=None)
+        except OSError:
+            LOG.exception("Could not persist failed job %s; uploads paused until storage recovers", job_id)
+
+    def flush_pending(self) -> None:
+        with self.lock:
+            for job_id in list(self.unsaved):
+                try:
+                    self.update(job_id)
+                except OSError:
+                    return
 
     def _work(self) -> None:
         while not self.stopping.is_set():
@@ -159,7 +205,7 @@ class JobManager:
                 self._run(job_id)
             except Exception:
                 LOG.exception("Job failed: %s", job_id)
-                self.update(job_id, status="failed", stage="failed", error="Ошибка обработки видео.")
+                self.fail(job_id, "Ошибка обработки видео; проверьте доступность диска и журнал сервера.")
             finally:
                 self.slots.release()
                 self.pending.task_done()
@@ -175,6 +221,9 @@ class JobManager:
         self.update(job_id, stage="decode")
         env = os.environ.copy()
         env.update(VISION_ENGINE=self.settings.engine, PYTHONIOENCODING="utf-8")
+        env["MODELS_DIR"] = str(Path(env.get("MODELS_DIR", ROOT.parent / "models")).expanduser().resolve())
+        env["SERVICE_PARENT_PID"] = str(os.getpid())
+        env["SERVICE_JOB_DEADLINE"] = str(deadline)
         with (directory / "worker.log").open("wb") as log:
             process = subprocess.Popen(
                 self.command(directory), cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT,
@@ -221,15 +270,39 @@ class JobManager:
             for job_id, record in list(self.records.items()):
                 if record["details"]["status"] == "processing" or record["updated_at"] >= cutoff:
                     continue
-                directory = self.settings.jobs_dir / job_id
-                if directory.is_symlink() or directory.resolve().parent != self.settings.jobs_dir.resolve():
+                if self._remove_directory(self.settings.jobs_dir / job_id):
+                    del self.records[job_id]
+                    self.unsaved.discard(job_id)
+            # Uploads interrupted before result.json was written still contain private video.
+            for directory in self.settings.jobs_dir.iterdir():
+                if (
+                    not JOB_ID.fullmatch(directory.name)
+                    or directory.name in self.records or directory.name in self.uploads
+                ):
                     continue
-                shutil.rmtree(directory, ignore_errors=False)
-                del self.records[job_id]
+                if directory.is_symlink() or not directory.is_dir():
+                    continue
+                newest = max([directory.stat().st_mtime] + [p.stat().st_mtime for p in directory.iterdir()])
+                if newest < cutoff:
+                    self._remove_directory(directory)
+
+    def _remove_directory(self, directory: Path) -> bool:
+        if (
+            not JOB_ID.fullmatch(directory.name) or directory.is_symlink()
+            or directory.resolve().parent != self.settings.jobs_dir.resolve()
+        ):
+            return False
+        if directory.exists():
+            shutil.rmtree(directory)
+        return True
 
     def _clean_loop(self) -> None:
-        while not self.stopping.wait(60):
+        last_cleanup = time.monotonic()
+        while not self.stopping.wait(1):
             try:
-                self.cleanup()
+                self.flush_pending()
+                if time.monotonic() - last_cleanup >= 60:
+                    self.cleanup()
+                    last_cleanup = time.monotonic()
             except OSError:
                 LOG.exception("Could not clean expired jobs")

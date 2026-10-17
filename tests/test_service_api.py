@@ -1,7 +1,9 @@
 """Contract, access control, real subprocess deadlines and restart tests."""
 
+import asyncio
 import base64
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -176,12 +178,84 @@ def test_failed_persistence_does_not_leave_a_queued_job(service, monkeypatch):
     def disk_full(*args, **kwargs):
         raise OSError("Disk full")
     monkeypatch.setattr("service.jobs.write_json", disk_full)
-    with pytest.raises(OSError, match="Disk full"):
-        upload(client)
+    assert upload(client).status_code == 503
     assert manager.records == {}
     assert not [p for p in settings.jobs_dir.iterdir() if p.is_dir()]
     assert manager.reserve()
     manager.slots.release()
+
+
+def test_disk_failure_does_not_kill_worker_and_recovers(service, monkeypatch):
+    client, manager, _ = service(command=worker_command(delay=0.3))
+    job_id = upload(client).json()["job_id"]
+    original = write_json
+    def disk_full(*args, **kwargs):
+        raise OSError("Disk full")
+    monkeypatch.setattr("service.jobs.write_json", disk_full)
+    assert wait_for_job(client, job_id)["status"] == "failed"
+    assert manager.threads[0].is_alive()
+    assert client.get("/api/v1/health").status_code == 503
+    assert upload(client).status_code == 503
+    monkeypatch.setattr("service.jobs.write_json", original)
+    manager.flush_pending()
+    assert client.get("/api/v1/health").status_code == 200
+    assert wait_for_job(client, upload(client).json()["job_id"])["status"] == "done"
+
+
+def test_orphan_retention_preserves_active_uploads(service):
+    _, manager, settings = service()
+    orphan = settings.jobs_dir / ("b" * 32)
+    orphan.mkdir()
+    (orphan / "source.mov").write_bytes(b"interrupted upload")
+    os.utime(orphan / "source.mov", (1, 1))
+    os.utime(orphan, (1, 1))
+    active_id, active = manager.allocate()
+    (active / "source.mov").write_bytes(b"active upload")
+    os.utime(active / "source.mov", (1, 1))
+    os.utime(active, (1, 1))
+    manager.cleanup()
+    assert not orphan.exists()
+    assert active.exists()
+    manager.discard_upload(active_id)
+
+
+def test_csp_blocks_credential_forwarding_to_external_api(service):
+    client, _, settings = service()
+    settings.ui_dir.mkdir()
+    (settings.ui_dir / "index.html").write_text("<p>Team UI</p>")
+    response = client.get("/?api=https://untrusted.invalid&job=example")
+    assert response.status_code == 200
+    assert "connect-src 'self';" in response.headers["Content-Security-Policy"]
+    assert response.headers["Referrer-Policy"] == "no-referrer"
+
+
+def test_stalled_upload_releases_slot(service):
+    client, manager, settings = service(settings={
+        "upload_idle_sec": 0.03, "upload_timeout_sec": 0.05, "workers": 1, "capacity": 1,
+    })
+    app = create_app(settings, manager, probe=lambda path: None)
+    # Reuse the already running manager; invoke its ASGI stack without starting a second lifespan.
+    body = b'--test\r\nContent-Disposition: form-data; name="file"; filename="x.mov"\r\n\r\nvideo'
+    messages = []
+    async def exercise():
+        first = True
+        async def receive():
+            nonlocal first
+            if first:
+                first = False
+                return {"type": "http.request", "body": body, "more_body": True}
+            await asyncio.sleep(1)
+            return {"type": "http.request", "body": b"", "more_body": False}
+        async def send(message):
+            messages.append(message)
+        await app({"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1", "method": "POST",
+                   "scheme": "http", "path": "/api/v1/analyze", "raw_path": b"/api/v1/analyze", "query_string": b"",
+                   "root_path": "", "server": ("test", 80), "client": ("test", 1234),
+                   "headers": [(b"x-api-key", KEY.encode()),
+                               (b"content-type", b"multipart/form-data; boundary=test")]}, receive, send)
+    asyncio.run(exercise())
+    assert next(m["status"] for m in messages if m["type"] == "http.response.start") == 408
+    assert upload(client).status_code == 200
 
 
 def test_done_result_survives_restart_and_interrupted_job_fails(tmp_path):

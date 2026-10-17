@@ -3,13 +3,14 @@ FROM python:3.12-slim
 WORKDIR /app
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 UV_PROJECT_ENVIRONMENT=/opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
+ENV MODELS_DIR=/app/models
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir uv==0.13.1
 
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
-# Verify that the lead has recorded the multipart dependency in the shared lockfile.
+# Verify the upload parser is present in the locked environment.
 RUN python -c "import python_multipart"
 
 # .dockerignore allows runtime code only; no videos, secrets, results or weights.

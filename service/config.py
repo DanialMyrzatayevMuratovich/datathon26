@@ -21,6 +21,8 @@ class Settings:
     timeout_sec: float = 270
     retention_sec: float = 86400
     max_upload_bytes: int = 200 * 1024 * 1024
+    upload_timeout_sec: float = 180
+    upload_idle_sec: float = 15
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -33,6 +35,8 @@ class Settings:
             capacity=int(os.getenv("SERVICE_CAPACITY", "8")),
             timeout_sec=float(os.getenv("SERVICE_TIMEOUT_SEC", "270")),
             retention_sec=float(os.getenv("SERVICE_RETENTION_SEC", "86400")),
+            upload_timeout_sec=float(os.getenv("SERVICE_UPLOAD_TIMEOUT_SEC", "180")),
+            upload_idle_sec=float(os.getenv("SERVICE_UPLOAD_IDLE_SEC", "15")),
         )
 
     def validate(self) -> None:
@@ -47,3 +51,5 @@ class Settings:
             or self.retention_sec <= 0 or self.max_upload_bytes <= 0
         ):
             raise ValueError("Timeout must be in (0, 270]; retention and upload limit must be positive")
+        if not all(math.isfinite(x) and x > 0 for x in (self.upload_timeout_sec, self.upload_idle_sec)):
+            raise ValueError("Upload deadlines must be finite and positive")

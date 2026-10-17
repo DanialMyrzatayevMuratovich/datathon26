@@ -2,6 +2,7 @@
 
 import json
 import os
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -23,6 +24,14 @@ def write_json(path: Path, value: dict) -> None:
 
 
 def main() -> None:
+    # launchd restarts the API after a crash, but our independent process groups
+    # must not leave old GPU workers alive. A separate process can also interrupt
+    # a native model call that holds the Python GIL.
+    if os.name != "nt" and os.getenv("SERVICE_PARENT_PID") and os.getenv("SERVICE_JOB_DEADLINE"):
+        subprocess.Popen([
+            sys.executable, "-m", "service.watchdog", os.environ["SERVICE_PARENT_PID"],
+            str(os.getpid()), os.environ["SERVICE_JOB_DEADLINE"],
+        ], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     # Model weights must be prepared locally before starting the service.
     os.environ["HF_HUB_OFFLINE"] = "1"
     os.environ["TRANSFORMERS_OFFLINE"] = "1"

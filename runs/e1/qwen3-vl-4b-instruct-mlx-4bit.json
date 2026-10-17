@@ -1,0 +1,557 @@
+{
+ "summary": {
+  "model": "qwen3-vl-4b-instruct-mlx-4bit",
+  "load_s": 3.5,
+  "accuracy": 0.793,
+  "by_attr": {
+   "key": "5/8",
+   "safe_open": "8/8",
+   "screen": "7/7",
+   "cash": "3/6"
+  },
+  "mean_s": 0.87,
+  "unparsed": 0
+ },
+ "items": [
+  {
+   "video": "X-22",
+   "t": 17,
+   "attr": "key",
+   "expected": true,
+   "object": "safe",
+   "box": [
+    186.0,
+    247.4,
+    263.8,
+    352.9
+   ],
+   "crop": "data/processed/e1/X-22_17_key.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 0.99,
+   "correct": false
+  },
+  {
+   "video": "X-22",
+   "t": 3,
+   "attr": "key",
+   "expected": true,
+   "object": "safe",
+   "box": [
+    186.9,
+    247.6,
+    263.4,
+    350.1
+   ],
+   "crop": "data/processed/e1/X-22_3_key.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 0.84,
+   "correct": false
+  },
+  {
+   "video": "X-23",
+   "t": 2,
+   "attr": "key",
+   "expected": true,
+   "object": "safe",
+   "box": [
+    187.2,
+    247.3,
+    263.9,
+    348.0
+   ],
+   "crop": "data/processed/e1/X-23_2_key.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 0.87,
+   "correct": false
+  },
+  {
+   "video": "X-23",
+   "t": 16,
+   "attr": "key",
+   "expected": false,
+   "object": "safe",
+   "box": [
+    185.6,
+    247.6,
+    263.2,
+    353.3
+   ],
+   "crop": "data/processed/e1/X-23_16_key.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 0.85,
+   "correct": true
+  },
+  {
+   "video": "X-29",
+   "t": 15,
+   "attr": "key",
+   "expected": false,
+   "object": "safe",
+   "box": [
+    201.2,
+    265.3,
+    274.5,
+    369.0
+   ],
+   "crop": "data/processed/e1/X-29_15_key.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 0.85,
+   "correct": true
+  },
+  {
+   "video": "X-15",
+   "t": 19,
+   "attr": "key",
+   "expected": false,
+   "object": "safe",
+   "box": [
+    213.3,
+    262.0,
+    293.0,
+    363.6
+   ],
+   "crop": "data/processed/e1/X-15_19_key.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 0.87,
+   "correct": true
+  },
+  {
+   "video": "X-28",
+   "t": 11,
+   "attr": "key",
+   "expected": false,
+   "object": "safe",
+   "box": [
+    200.6,
+    265.2,
+    274.4,
+    373.4
+   ],
+   "crop": "data/processed/e1/X-28_11_key.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 0.85,
+   "correct": true
+  },
+  {
+   "video": "X-28",
+   "t": 2,
+   "attr": "key",
+   "expected": false,
+   "object": "safe",
+   "box": [
+    203.8,
+    265.2,
+    274.6,
+    365.1
+   ],
+   "crop": "data/processed/e1/X-28_2_key.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 0.85,
+   "correct": true
+  },
+  {
+   "video": "X-24",
+   "t": 11,
+   "attr": "key",
+   "expected": null,
+   "object": "safe",
+   "box": [
+    201.6,
+    265.5,
+    274.6,
+    370.2
+   ],
+   "crop": "data/processed/e1/X-24_11_key.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 0.85,
+   "correct": null
+  },
+  {
+   "video": "X-20",
+   "t": 7,
+   "attr": "safe_open",
+   "expected": true,
+   "object": "safe",
+   "box": [
+    184.7,
+    247.5,
+    263.6,
+    352.2
+   ],
+   "crop": "data/processed/e1/X-20_7_safe_open.jpg",
+   "answer": true,
+   "raw": "yes",
+   "seconds": 0.8,
+   "correct": true
+  },
+  {
+   "video": "X-20",
+   "t": 9,
+   "attr": "safe_open",
+   "expected": true,
+   "object": "safe",
+   "box": [
+    184.5,
+    247.4,
+    263.4,
+    353.1
+   ],
+   "crop": "data/processed/e1/X-20_9_safe_open.jpg",
+   "answer": true,
+   "raw": "yes",
+   "seconds": 0.77,
+   "correct": true
+  },
+  {
+   "video": "X-35",
+   "t": 42.6,
+   "attr": "safe_open",
+   "expected": true,
+   "object": "safe",
+   "box": [
+    309.0,
+    341.8,
+    449.9,
+    572.5
+   ],
+   "crop": "data/processed/e1/X-35_42p6_safe_open.jpg",
+   "answer": true,
+   "raw": "yes",
+   "seconds": 0.7,
+   "correct": true
+  },
+  {
+   "video": "X-39",
+   "t": 66.9,
+   "attr": "safe_open",
+   "expected": true,
+   "object": "safe",
+   "box": [
+    311.0,
+    341.9,
+    449.7,
+    485.7
+   ],
+   "crop": "data/processed/e1/X-39_66p9_safe_open.jpg",
+   "answer": true,
+   "raw": "yes",
+   "seconds": 0.89,
+   "correct": true
+  },
+  {
+   "video": "X-22",
+   "t": 17,
+   "attr": "safe_open",
+   "expected": false,
+   "object": "safe",
+   "box": [
+    186.0,
+    247.4,
+    263.8,
+    352.9
+   ],
+   "crop": "data/processed/e1/X-22_17_safe_open.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 0.77,
+   "correct": true
+  },
+  {
+   "video": "X-23",
+   "t": 16,
+   "attr": "safe_open",
+   "expected": false,
+   "object": "safe",
+   "box": [
+    185.6,
+    247.6,
+    263.2,
+    353.3
+   ],
+   "crop": "data/processed/e1/X-23_16_safe_open.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 0.77,
+   "correct": true
+  },
+  {
+   "video": "X-38",
+   "t": 32,
+   "attr": "safe_open",
+   "expected": false,
+   "object": "safe",
+   "box": [
+    330.6,
+    342.3,
+    449.7,
+    485.7
+   ],
+   "crop": "data/processed/e1/X-38_32_safe_open.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 0.8,
+   "correct": true
+  },
+  {
+   "video": "X-5",
+   "t": 42.6,
+   "attr": "safe_open",
+   "expected": false,
+   "object": "safe",
+   "box": [
+    302.6,
+    355.6,
+    413.8,
+    499.5
+   ],
+   "crop": "data/processed/e1/X-5_42p6_safe_open.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 0.8,
+   "correct": true
+  },
+  {
+   "video": "X-28",
+   "t": 11,
+   "attr": "screen",
+   "expected": true,
+   "object": "laptop",
+   "box": [
+    244.3,
+    325.4,
+    318.1,
+    393.2
+   ],
+   "crop": "data/processed/e1/X-28_11_screen.jpg",
+   "answer": true,
+   "raw": "yes",
+   "seconds": 1.0,
+   "correct": true
+  },
+  {
+   "video": "X-28",
+   "t": 2,
+   "attr": "screen",
+   "expected": true,
+   "object": "laptop",
+   "box": [
+    247.8,
+    325.5,
+    318.4,
+    392.3
+   ],
+   "crop": "data/processed/e1/X-28_2_screen.jpg",
+   "answer": true,
+   "raw": "yes",
+   "seconds": 1.0,
+   "correct": true
+  },
+  {
+   "video": "X-23",
+   "t": 2,
+   "attr": "screen",
+   "expected": true,
+   "object": "laptop",
+   "box": [
+    236.5,
+    305.2,
+    299.7,
+    372.3
+   ],
+   "crop": "data/processed/e1/X-23_2_screen.jpg",
+   "answer": true,
+   "raw": "yes",
+   "seconds": 1.0,
+   "correct": true
+  },
+  {
+   "video": "X-5",
+   "t": 42.6,
+   "attr": "screen",
+   "expected": true,
+   "object": "laptop",
+   "box": [
+    238.9,
+    365.5,
+    296.1,
+    433.7
+   ],
+   "crop": "data/processed/e1/X-5_42p6_screen.jpg",
+   "answer": true,
+   "raw": "yes",
+   "seconds": 0.98,
+   "correct": true
+  },
+  {
+   "video": "X-23",
+   "t": 16,
+   "attr": "screen",
+   "expected": false,
+   "object": "laptop",
+   "box": [
+    224.6,
+    304.5,
+    299.9,
+    372.7
+   ],
+   "crop": "data/processed/e1/X-23_16_screen.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 1.01,
+   "correct": true
+  },
+  {
+   "video": "X-29",
+   "t": 15,
+   "attr": "screen",
+   "expected": false,
+   "object": "laptop",
+   "box": [
+    244.2,
+    325.2,
+    318.4,
+    393.1
+   ],
+   "crop": "data/processed/e1/X-29_15_screen.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 1.0,
+   "correct": true
+  },
+  {
+   "video": "X-22",
+   "t": 17,
+   "attr": "screen",
+   "expected": false,
+   "object": "laptop",
+   "box": [
+    224.4,
+    309.4,
+    289.5,
+    372.9
+   ],
+   "crop": "data/processed/e1/X-22_17_screen.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 1.1,
+   "correct": true
+  },
+  {
+   "video": "X-26",
+   "t": 12,
+   "attr": "cash",
+   "expected": true,
+   "object": "desk",
+   "box": [
+    90.3,
+    365.7,
+    347.8,
+    569.8
+   ],
+   "crop": "data/processed/e1/X-26_12_cash.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 0.88,
+   "correct": false
+  },
+  {
+   "video": "X-38",
+   "t": 32,
+   "attr": "cash",
+   "expected": true,
+   "object": "desk",
+   "box": [
+    69.1,
+    363.4,
+    330.9,
+    539.8
+   ],
+   "crop": "data/processed/e1/X-38_32_cash.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 0.75,
+   "correct": false
+  },
+  {
+   "video": "X-4",
+   "t": 56,
+   "attr": "cash",
+   "expected": true,
+   "object": "desk",
+   "box": [
+    15.6,
+    389.5,
+    297.9,
+    547.5
+   ],
+   "crop": "data/processed/e1/X-4_56_cash.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 0.76,
+   "correct": false
+  },
+  {
+   "video": "X-29",
+   "t": 15,
+   "attr": "cash",
+   "expected": false,
+   "object": "desk",
+   "box": [
+    90.4,
+    366.3,
+    347.7,
+    569.9
+   ],
+   "crop": "data/processed/e1/X-29_15_cash.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 0.88,
+   "correct": true
+  },
+  {
+   "video": "X-23",
+   "t": 16,
+   "attr": "cash",
+   "expected": false,
+   "object": "desk",
+   "box": [
+    68.4,
+    344.1,
+    327.7,
+    549.0
+   ],
+   "crop": "data/processed/e1/X-23_16_cash.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 0.86,
+   "correct": true
+  },
+  {
+   "video": "X-28",
+   "t": 11,
+   "attr": "cash",
+   "expected": false,
+   "object": "desk",
+   "box": [
+    90.5,
+    366.1,
+    348.0,
+    569.2
+   ],
+   "crop": "data/processed/e1/X-28_11_cash.jpg",
+   "answer": false,
+   "raw": "no",
+   "seconds": 0.87,
+   "correct": true
+  }
+ ]
+}

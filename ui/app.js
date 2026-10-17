@@ -133,6 +133,9 @@ function httpError(status, body, phase) {
   if (status === 400 || status === 415 || status === 422) {
     return new UiError('Сервис не принял файл: нужен видеофайл в формате .mov.', { detail, retry: 'none' });
   }
+  if (status === 429) {
+    return new UiError('Сервис сейчас занят другими проверками. Подождите несколько секунд и нажмите «Повторить».', { detail, retry: phase });
+  }
   if (status === 404) {
     return new UiError('Сервис не нашёл эту проверку — возможно, его перезапустили. Загрузите видео ещё раз.', { detail, retry: 'upload' });
   }
@@ -181,9 +184,8 @@ async function checkHealth() {
 function pickFile(f) {
   if (!f) return;
   hideFormError();
-  const isMov = /\.mov$/i.test(f.name) || f.type === 'video/quicktime';
-  if (!isMov && !(f.type || '').startsWith('video/')) {
-    showFormError('Это не видео. Выберите файл .mov с камеры над кассой.');
+  if (!/\.mov$/i.test(f.name)) {
+    showFormError(`«${f.name}» — не .mov. Сервис принимает видео с камеры в формате .mov.`);
     return;
   }
   if (f.size > MAX_BYTES) {
@@ -194,7 +196,7 @@ function pickFile(f) {
   if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
   state.objectUrl = URL.createObjectURL(f);
   el.fileName.textContent = f.name;
-  el.fileSize.textContent = isMov ? fmtSize(f.size) : `${fmtSize(f.size)} · не .mov — сервис может не принять`;
+  el.fileSize.textContent = fmtSize(f.size);
   el.fileRow.hidden = false;
   el.start.focus();
 }
@@ -483,16 +485,20 @@ function renderVerdict(a, violations, details) {
   const meta = [];
   if (details.filename) meta.push(details.filename);
   if (a.duration_sec) meta.push(`длительность ${mmss(a.duration_sec)}`);
-  if (a.processing_sec) meta.push(`проверено за ${numRu(a.processing_sec, 0)} с`);
+  if (a.processing_sec != null) meta.push(a.processing_sec < 1 ? 'проверено меньше чем за секунду' : `проверено за ${numRu(a.processing_sec, 0)} с`);
   el.verdictMeta.textContent = meta.join(' · ');
   el.badgeMock.hidden = !/mock/i.test(a.engine || '');
 }
 
 function renderPlayer(violations) {
-  const src = state.objectUrl || (state.jobId && !MOCK ? `${API}/api/v1/jobs/${encodeURIComponent(state.jobId)}/video` : '');
-  el.player.hidden = !src;
   el.playerNote.hidden = true;
-  if (src && el.player.getAttribute('src') !== src) el.player.src = src;
+  if (state.objectUrl) {
+    el.player.hidden = false;
+    if (el.player.getAttribute('src') !== state.objectUrl) el.player.src = state.objectUrl;
+  } else {
+    el.player.hidden = true;
+    if (state.jobId && !MOCK) loadServerVideo(state.jobId, state.runId);
+  }
 
   for (const node of el.timeline.querySelectorAll('.tl-event')) node.remove();
   el.timelineLabel.textContent = violations.length
@@ -525,6 +531,24 @@ function renderPlayer(violations) {
     });
     el.timeline.append(b);
   });
+}
+
+// страницу перезагрузили — локального файла нет, берём исходник с сервера (с ключом, поэтому через fetch, а не src)
+async function loadServerVideo(jobId, run) {
+  try {
+    const res = await fetch(`${API}/api/v1/jobs/${encodeURIComponent(jobId)}/video`, { headers: authHeaders(), cache: 'no-store' });
+    if (!res.ok) throw new Error(String(res.status));
+    const blob = await res.blob();
+    if (run !== state.runId) return;
+    if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
+    state.objectUrl = URL.createObjectURL(blob);
+    el.player.src = state.objectUrl;
+    el.player.hidden = false;
+  } catch {
+    if (run !== state.runId) return;
+    el.playerNote.textContent = 'Видео с сервера не загрузилось — кадры-доказательства в карточках ниже.';
+    el.playerNote.hidden = false;
+  }
 }
 
 function eventWindow(v, dur) {
@@ -699,7 +723,9 @@ el.again.addEventListener('click', () => {
 });
 
 el.player.addEventListener('error', () => {
+  if (!el.player.getAttribute('src')) return;
   el.player.hidden = true;
+  el.playerNote.textContent = 'Браузер не может воспроизвести этот файл (часто это кодек HEVC). Кадры-доказательства — в карточках ниже.';
   el.playerNote.hidden = false;
 });
 el.player.addEventListener('timeupdate', () => {

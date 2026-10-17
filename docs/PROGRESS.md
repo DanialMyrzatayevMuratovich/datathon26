@@ -17,3 +17,4 @@
 - 16:13 · danial · Danial · lead: python-multipart dep, ignore runs/jobs, ruff clean (R1, R9) · тесты: pass
 - 16:13 · bigali · Бигали · chore: add bigali to team · тесты: pass
 - 16:15 · danial · Danial · deps: torch, transformers, supervision, opencv, mlx-vlm (Apple only); CPU torch on Linux for Docker (R7) · тесты: pass
+- 16:17 · bigali · Бигали · ui: R6 web interface + R10 player, verified e2e on service API 25/25 (UI files first landed in 3bff890) · тесты: pass

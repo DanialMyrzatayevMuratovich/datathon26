@@ -1,0 +1,499 @@
+{
+ "X-1:crop": {
+  "verdict_ok": false,
+  "types": [],
+  "gt": [
+   [
+    "T9",
+    22.0
+   ]
+  ]
+ },
+ "X-4:crop": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T9",
+    51.0
+   ],
+   [
+    "T2",
+    58.5
+   ]
+  ],
+  "gt": [
+   [
+    "T2",
+    57.0
+   ],
+   [
+    "T9",
+    68.0
+   ]
+  ]
+ },
+ "X-11:crop": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T5",
+    17.5
+   ]
+  ],
+  "gt": [
+   [
+    "T5",
+    18.0
+   ]
+  ]
+ },
+ "X-13:crop": {
+  "verdict_ok": false,
+  "types": [],
+  "gt": [
+   [
+    "T9",
+    47.0
+   ]
+  ]
+ },
+ "X-15:crop": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T9",
+    8.0
+   ],
+   [
+    "T1",
+    15.0
+   ]
+  ],
+  "gt": [
+   [
+    "T1",
+    15.0
+   ]
+  ]
+ },
+ "X-17:crop": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T10",
+    7.5
+   ]
+  ],
+  "gt": [
+   [
+    "T10",
+    7.0
+   ]
+  ]
+ },
+ "X-20:crop": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T4",
+    7.0
+   ]
+  ],
+  "gt": [
+   [
+    "T4",
+    5.0
+   ]
+  ]
+ },
+ "X-24:crop": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T11",
+    8.0
+   ]
+  ],
+  "gt": [
+   [
+    "T11",
+    8.0
+   ]
+  ]
+ },
+ "X-26:crop": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T1",
+    13.0
+   ]
+  ],
+  "gt": [
+   [
+    "T1",
+    9.0
+   ]
+  ]
+ },
+ "X-28:crop": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T5",
+    7.5
+   ]
+  ],
+  "gt": [
+   [
+    "T5",
+    7.0
+   ]
+  ]
+ },
+ "X-30:crop": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T7",
+    12.5
+   ]
+  ],
+  "gt": [
+   [
+    "T7",
+    13.0
+   ]
+  ]
+ },
+ "X-34:crop": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T9",
+    7.5
+   ],
+   [
+    "T8",
+    15.0
+   ]
+  ],
+  "gt": [
+   [
+    "T8",
+    13.0
+   ]
+  ]
+ },
+ "X-38:crop": {
+  "verdict_ok": false,
+  "types": [],
+  "gt": [
+   [
+    "T2",
+    33.0
+   ]
+  ]
+ },
+ "X-40:crop": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T11",
+    19.5
+   ]
+  ],
+  "gt": [
+   [
+    "T11",
+    17.0
+   ]
+  ]
+ },
+ "X-46:crop": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T12",
+    10.0
+   ]
+  ],
+  "gt": [
+   [
+    "T12",
+    11.0
+   ]
+  ]
+ },
+ "X-3:crop": {
+  "verdict_ok": true,
+  "types": [],
+  "gt": []
+ },
+ "X-23:crop": {
+  "verdict_ok": true,
+  "types": [],
+  "gt": []
+ },
+ "X-29:crop": {
+  "verdict_ok": true,
+  "types": [],
+  "gt": []
+ },
+ "X-35:crop": {
+  "verdict_ok": true,
+  "types": [],
+  "gt": []
+ },
+ "X-39:crop": {
+  "verdict_ok": true,
+  "types": [],
+  "gt": []
+ },
+ "X-1:mirror": {
+  "verdict_ok": false,
+  "types": [],
+  "gt": [
+   [
+    "T9",
+    22.0
+   ]
+  ]
+ },
+ "X-4:mirror": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T2",
+    55.5
+   ],
+   [
+    "T9",
+    55.5
+   ]
+  ],
+  "gt": [
+   [
+    "T2",
+    57.0
+   ],
+   [
+    "T9",
+    68.0
+   ]
+  ]
+ },
+ "X-11:mirror": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T5",
+    17.5
+   ]
+  ],
+  "gt": [
+   [
+    "T5",
+    18.0
+   ]
+  ]
+ },
+ "X-13:mirror": {
+  "verdict_ok": false,
+  "types": [],
+  "gt": [
+   [
+    "T9",
+    47.0
+   ]
+  ]
+ },
+ "X-15:mirror": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T9",
+    8.0
+   ],
+   [
+    "T1",
+    15.5
+   ]
+  ],
+  "gt": [
+   [
+    "T1",
+    15.0
+   ]
+  ]
+ },
+ "X-17:mirror": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T10",
+    7.5
+   ]
+  ],
+  "gt": [
+   [
+    "T10",
+    7.0
+   ]
+  ]
+ },
+ "X-20:mirror": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T4",
+    5.5
+   ]
+  ],
+  "gt": [
+   [
+    "T4",
+    5.0
+   ]
+  ]
+ },
+ "X-24:mirror": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T11",
+    8.0
+   ]
+  ],
+  "gt": [
+   [
+    "T11",
+    8.0
+   ]
+  ]
+ },
+ "X-26:mirror": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T1",
+    13.0
+   ]
+  ],
+  "gt": [
+   [
+    "T1",
+    9.0
+   ]
+  ]
+ },
+ "X-28:mirror": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T5",
+    8.0
+   ]
+  ],
+  "gt": [
+   [
+    "T5",
+    7.0
+   ]
+  ]
+ },
+ "X-30:mirror": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T7",
+    12.5
+   ]
+  ],
+  "gt": [
+   [
+    "T7",
+    13.0
+   ]
+  ]
+ },
+ "X-34:mirror": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T9",
+    8.5
+   ],
+   [
+    "T8",
+    15.0
+   ]
+  ],
+  "gt": [
+   [
+    "T8",
+    13.0
+   ]
+  ]
+ },
+ "X-38:mirror": {
+  "verdict_ok": false,
+  "types": [],
+  "gt": [
+   [
+    "T2",
+    33.0
+   ]
+  ]
+ },
+ "X-40:mirror": {
+  "verdict_ok": false,
+  "types": [],
+  "gt": [
+   [
+    "T11",
+    17.0
+   ]
+  ]
+ },
+ "X-46:mirror": {
+  "verdict_ok": true,
+  "types": [
+   [
+    "T12",
+    10.0
+   ]
+  ],
+  "gt": [
+   [
+    "T12",
+    11.0
+   ]
+  ]
+ },
+ "X-3:mirror": {
+  "verdict_ok": true,
+  "types": [],
+  "gt": []
+ },
+ "X-23:mirror": {
+  "verdict_ok": true,
+  "types": [],
+  "gt": []
+ },
+ "X-29:mirror": {
+  "verdict_ok": true,
+  "types": [],
+  "gt": []
+ },
+ "X-35:mirror": {
+  "verdict_ok": true,
+  "types": [],
+  "gt": []
+ },
+ "X-39:mirror": {
+  "verdict_ok": true,
+  "types": [],
+  "gt": []
+ }
+}

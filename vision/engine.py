@@ -42,6 +42,9 @@ CASH_TYPES = ("T1", "T2", "T8")  # cash left / open / counted without the client
 EVENT_GAP_S = 15.0  # two events of one type closer than this are one case
 DOOR_WINDOW_S = 12.0  # after somebody walks into the empty cash room: the time she has to close the door
 DOOR_TURN_S = 3.0  # back to the camera this long = turned to the door to close it (X-31 4 s, X-40 4.5 s; open: <= 2 s)
+MACHINE_REACH = 0.4  # of the counting machine's width: the cashier's box this deep in it = hands at the machine
+RECOUNT_WAIT_S = 3.0  # T9 partial count: this long after the notes were last taken out of the machine
+RECOUNT_MIN_S = 8.0  # ... judged only if the cashier stays this long after the load (X-12, X-15 leave right away)
 KEY_SCORE_MIN = 11.0  # lock area disturbed this much = key in the lock (X-22 12; empty keyholes after a leave 2-9,
 #                       Э12 — a thin margin chosen on one video, Danial's call 18.10 03:55)
 BAGS = ("handbag", "backpack", "suitcase")
@@ -69,6 +72,9 @@ Q_ACTION = ("These are three frames in time order from a camera above a bank cas
 Q_HANDLING = ("Is someone handling banknotes in this image right now — counting cash by hand or feeding money into "
               "a banknote counting machine (a machine with a slot and a display)?")
 Q_PACK = "Look closely at the desk surface. Is there a small rectangular pack of banknotes on it?"
+Q_COUNT = ("Is this person counting banknotes by hand right now — holding a stack of notes and flipping through them "
+           "one by one with the fingers? Answer no if the notes only lie on the desk, are just held or put down, or "
+           "the hands are empty.")
 Q_BACK = ("Look at the person in the picture. Is the person turned away from the camera, so that we see the back of "
           "the head and the back, not the face?")
 
@@ -289,6 +295,9 @@ class Checker:
     def machine_busy(self, i):
         return self.sc.machine is not None and self._ask(("machine", i), [crop(self.frames[i][1], self.sc.machine)],
                                                          Q_MACHINE)
+
+    def counting_by_hand(self, i, person_box):
+        return self._ask(("count", i), [crop(self.frames[i][1], person_box, margin=0.1, out_side=448)], Q_COUNT)
 
     def turned_away(self, i, person_box):
         return self._ask(("back", i), [crop(self.frames[i][1], person_box, margin=0.15, out_side=448)], Q_BACK)
@@ -734,6 +743,34 @@ def detect_events(frames, dets, sc: Scene, chk: Checker) -> list[Event]:
             i = min(n - 1, j + k(1.0))  # inside, walking on to the desk past the open door
             events.append(Event("T6", t[i], [t[i], t[min(n - 1, i + k(2.0))]], "кассир входит в кассу и проходит "
                                 "к столу, не повернувшись к двери — дверь кассы остаётся открытой", 0.6))
+
+    # 10) a partial count (X-44): the cashier, alone, feeds the notes into the counting machine (her box deep in the
+    #     machine's for >= 1 s), takes them out and never recounts them by hand — the clean X-43 and X-45 recount
+    #     after the machine (Danial, 18.10; Qwen "counting by hand": X-44 0 of 41 frames, X-43 5, X-45 9).
+    #     With a client the count is judged by the rules above.
+    if not has("T9") and not any(client_here) and not client_arrivals(tr):
+        if sc.machine is None and chk.find_machine:
+            sc.machine = chk.find_machine()
+        if sc.machine is not None:
+            mx0, my0, mx1, my1 = sc.machine
+
+            def reach(ps):
+                return max([min(p.box[2], mx1) - mx0 for p in ps if p.box[3] > my0 and p.box[1] < my1] or [-1.0])
+
+            depth_in = [reach(ps) for ps in tr.at_work]
+            # a load is a short reach (1-4 s) after >= 1 s with the hands off the machine; a box resting on a
+            # wrongly found "machine" for the whole clip is not one (X-10, X-14: the detector boxed the desk)
+            loads = [(s, e) for s, e in _runs([d >= MACHINE_REACH * (mx1 - mx0) for d in depth_in], True, 2)
+                     if e - s <= k(4.0) and s >= k(1.0) and all(d <= 0 for d in depth_in[s - k(1.0):s])]
+            if loads:
+                after = [i for i in range(loads[0][1], n) if tr.at_work[i]]
+                recount = (chk.counting_by_hand(i, max(tr.at_work[i], key=lambda p: p.height).box) for i in after)
+                if len(after) >= k(RECOUNT_MIN_S) and not any(recount):
+                    took = _runs([d > 0 for d in depth_in], True, 1)[-1][1]  # hands leave the machine last time
+                    i = min(n - 1, took + k(RECOUNT_WAIT_S))
+                    events.append(Event("T9", t[i], [t[loads[0][0]], t[i]], "кассир пересчитывает деньги на "
+                                        "счётной машине, но после выемки не пересчитывает их вручную — пересчёт "
+                                        "неполный", 0.5))
     return events
 
 

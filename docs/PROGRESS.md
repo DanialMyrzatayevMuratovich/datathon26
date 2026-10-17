@@ -21,3 +21,4 @@
 - 16:26 · danial · Danial · ml: E1 — VLM on Grounding DINO crops: safe 8/8, screen 7/7, cash 5/6 tiled, key fails; frames/scene/vlm modules · тесты: pass
 - 16:40 · bigali · Бигали · docs: norms verified against adilet (14/14 points, 21/21 quotes; act 48 repealed -> AFR 53), SUBMISSION.md skeleton, my task spec (R8, R9) · тесты: pass
 - 16:47 · bigali · Бигали · docs: pitch handed to another teammate, next: own videos (R11) · тесты: pass
+- 16:53 · bigali · Бигали · docs: R5 public access verified via quick tunnel, strict jury check 0 issues (help for asylbek) · тесты: pass

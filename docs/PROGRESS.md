@@ -56,3 +56,4 @@
 - 01:50 · danial · Danial · service+ui: accept .mp4 as well as .mov (same container, ffprobe mov demuxer), test for mp4 upload (R1, R6) · тесты: pass
 - 01:49 · asylbek · Асылбек · docs: explain pretrained video pipeline for architecture consultation (R7) · тесты: pass
 - 02:02 · danial · Danial · ml: type/time precision without verdict loss — no VLM safe/cash checks in dark frames, no eating while a client sits, T10 time at bag on desk; X-17 time hit, false T4 (X-11) and T12 (X-1) removed (R7) · тесты: pass
+- 02:11 · asylbek · Асылбек · feat: profile initial and reused inference with exclusive timings (R4,R7) · тесты: pass

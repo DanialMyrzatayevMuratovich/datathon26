@@ -9,11 +9,13 @@ from types import SimpleNamespace
 import pytest
 from PIL import Image
 
-from service.local_vlm_probe import MODEL, LocalVLM, NoRedirect
+from service.local_vlm_probe import MODEL, LocalVLM, NoRedirect, keep_awake
 
 
-def test_local_adapter_preserves_image_order_and_generation_controls():
-    client = LocalVLM(action_codes=True)
+@pytest.mark.parametrize("model", [MODEL, "gemma-4-e4b-it-qat-q4_0"])
+def test_local_adapter_preserves_image_order_and_generation_controls(model, tmp_path):
+    trace_path = tmp_path / "inputs.jsonl"
+    client = LocalVLM(model=model, action_codes=True, trace_path=trace_path)
     captured = []
 
     def respond(request, timeout):
@@ -30,7 +32,7 @@ def test_local_adapter_preserves_image_order_and_generation_controls():
     payload = json.loads(request.data)
     assert payload["temperature"] == 0 and payload["max_tokens"] == 4
     assert payload["cache_prompt"] is False and payload["chat_template_kwargs"]["enable_thinking"] is False
-    assert payload["model"] == MODEL
+    assert payload["model"] == model
     assert payload["grammar"] == 'root ::= [ABCD]'
     parts = payload["messages"][0]["content"]
     for channel, part in enumerate(parts[:3]):
@@ -42,6 +44,9 @@ def test_local_adapter_preserves_image_order_and_generation_controls():
     assert answer == "A" and client.calls == client.completion_tokens == 1
     assert len(client.inputs[0]["jpeg_sha256"]) == 3
     assert len(set(client.inputs[0]["jpeg_sha256"])) == 3
+    saved = trace_path.read_text("utf-8")
+    assert json.loads(saved) == client.inputs[0]
+    assert "Choose A/B/C/D" not in saved and "base64" not in saved
 
 
 def test_redirects_are_rejected_before_images_can_leave_loopback():
@@ -79,3 +84,22 @@ def test_malformed_server_response_is_failure_not_no():
     client.opener = SimpleNamespace(open=lambda *args, **kwargs: io.BytesIO(b'{"choices":[]}'))
     with pytest.raises(ValueError, match="Invalid local VLM response"):
         client.ask([Image.new("RGB", (1, 1))], "test")
+
+
+def test_windows_awake_request_restored_after_failure(monkeypatch):
+    import ctypes
+
+    import service.local_vlm_probe as probe
+
+    states = []
+
+    def set_state(value):
+        states.append(value)
+        return 0x80000000
+
+    monkeypatch.setattr(probe.os, "name", "nt")
+    monkeypatch.setattr(ctypes, "windll", SimpleNamespace(kernel32=SimpleNamespace(
+        SetThreadExecutionState=set_state)), raising=False)
+    with pytest.raises(RuntimeError, match="synthetic interruption"), keep_awake():
+        raise RuntimeError("synthetic interruption")
+    assert states == [0x80000003, 0x80000000]

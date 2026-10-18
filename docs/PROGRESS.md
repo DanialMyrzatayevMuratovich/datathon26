@@ -69,3 +69,4 @@
 - 04:36 · danial · Danial · T9 partial count: cashier alone never recounts by hand after the machine (X-44 found; 39/40 on cache); probes e13, e14 (R7) · тесты: FAIL
 - 05:13 · danial · Danial · 19 clean videos: 0 false alarms with all new rules (39/40 on cache); probes e15, e16 for T13 rejected (R7) · тесты: FAIL
 - 10:57 · danial · Danial · final jury-style API run: 39/40 (97.5%), 0 false alarms; METRICS and SUBMISSION numbers updated (R7) · тесты: FAIL
+- 11:00 · danial · Danial · UI: hint to upload one video at a time (1-3 min each); cache-bust stylesheet (R5) · тесты: FAIL

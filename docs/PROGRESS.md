@@ -71,3 +71,4 @@
 - 10:57 · danial · Danial · final jury-style API run: 39/40 (97.5%), 0 false alarms; METRICS and SUBMISSION numbers updated (R7) · тесты: FAIL
 - 11:00 · danial · Danial · UI: hint to upload one video at a time (1-3 min each); cache-bust stylesheet (R5) · тесты: FAIL
 - 11:03 · danial · Danial · README: clear install for macOS/Linux and Windows, models outside git (MODELS_DIR), results 97.5%, service URL, team of 4 (R9) · тесты: FAIL
+- 11:23 · danial · Danial · README: accuracy 97.5% (39/40) at the top (R9) · тесты: FAIL

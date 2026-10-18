@@ -25,6 +25,8 @@ from vision.pipeline import describe_rule, rules_for
 BASE_FPS = 2.0
 LONG_FPS = 2.0  # same as BASE: 1.0 lost X-4/X-13 and raised a false T12 on X-14 (jury check 20261018T0039)
 LONG_VIDEO_S = 60.0  # longer clips are sampled at LONG_FPS (time limit: 5 jury videos at once)
+VERY_LONG_FPS = 1.0  # clips over VERY_LONG_VIDEO_S: a 5-min clip at 2 fps runs over the 300 s limit (18.10 test: 308 s
+VERY_LONG_VIDEO_S = 180.0  # clip timed out); all 40 open videos are <= 142 s, so their results do not change
 FPS = BASE_FPS
 BATCH = os.getenv("DT_BATCH") == "1"  # set by vision.evaluate
 LEAVE_MIN_S = 3.0  # nobody at the workplace for this long = the cashier left
@@ -779,7 +781,8 @@ def run(path, progress=None) -> VideoAnalysis:
     started = time.perf_counter()
     vi = info(path)
     # long clips at 1 frame/s: half the people-detection time, rule windows stay in seconds (one job per process)
-    FPS = LONG_FPS if vi.duration > LONG_VIDEO_S else BASE_FPS
+    FPS = (VERY_LONG_FPS if vi.duration > VERY_LONG_VIDEO_S else LONG_FPS if vi.duration > LONG_VIDEO_S
+           else BASE_FPS)
     with sample(path, fps=FPS) as frames:
         return _run_sampled(path, frames, vi, started, progress)
 

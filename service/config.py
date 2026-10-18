@@ -47,9 +47,9 @@ class Settings:
         if not 1 <= self.workers <= self.capacity <= 64:
             raise ValueError("Expected 1 <= SERVICE_WORKERS <= SERVICE_CAPACITY <= 64")
         if (
-            not 0 < self.timeout_sec <= 270 or not math.isfinite(self.retention_sec)
+            not 0 < self.timeout_sec <= 300 or not math.isfinite(self.retention_sec)
             or self.retention_sec <= 0 or self.max_upload_bytes <= 0
         ):
-            raise ValueError("Timeout must be in (0, 270]; retention and upload limit must be positive")
+            raise ValueError("Timeout must be in (0, 300]; retention and upload limit must be positive")
         if not all(math.isfinite(x) and x > 0 for x in (self.upload_timeout_sec, self.upload_idle_sec)):
             raise ValueError("Upload deadlines must be finite and positive")

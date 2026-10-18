@@ -72,3 +72,4 @@
 - 11:00 · danial · Danial · UI: hint to upload one video at a time (1-3 min each); cache-bust stylesheet (R5) · тесты: FAIL
 - 11:03 · danial · Danial · README: clear install for macOS/Linux and Windows, models outside git (MODELS_DIR), results 97.5%, service URL, team of 4 (R9) · тесты: FAIL
 - 11:23 · danial · Danial · README: accuracy 97.5% (39/40) at the top (R9) · тесты: FAIL
+- 11:49 · danial · Danial · long videos: 1 fps over 3 min, timeout up to 300 s (5-min test clip done in 249 s; open-set results unchanged) (R4) · тесты: FAIL

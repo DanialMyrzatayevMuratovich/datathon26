@@ -1,0 +1,135 @@
+{
+ "X-3": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 20.03,
+  "processing_sec": 11.62,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=6+asked=cash:6,eat:1,pack:6,safe:1"
+ },
+ "X-5": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 71.6,
+  "processing_sec": 12.73,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=12+asked=cash:12,pack:12"
+ },
+ "X-8": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 38.03,
+  "processing_sec": 1.65,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=0+asked=eat:4,safe:7"
+ },
+ "X-10": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 15.57,
+  "processing_sec": 14.01,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=6+asked=eat:2,safe:4"
+ },
+ "X-12": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 42.3,
+  "processing_sec": 1.96,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=0+asked=eat:5,safe:4,screen:1"
+ },
+ "X-14": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 142.53,
+  "processing_sec": 5.55,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=0+asked=cash:12,eat:17,safe:16"
+ },
+ "X-16": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 22.73,
+  "processing_sec": 1.08,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=0+asked=cash:12,eat:1,safe:1"
+ },
+ "X-19": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 57.43,
+  "processing_sec": 36.6,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=27+asked=cash:12,eat:1,pack:12,safe:2"
+ },
+ "X-21": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 19.6,
+  "processing_sec": 12.96,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=8+asked=eat:3,safe:5"
+ },
+ "X-23": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 18.27,
+  "processing_sec": 0.92,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=0+asked=cash:6,eat:2,items_left:6,safe:1,screen:1"
+ },
+ "X-25": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 31.7,
+  "processing_sec": 1.43,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=0+asked=cash:6,eat:5,items_left:6,safe:4,screen:1"
+ },
+ "X-27": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 26.43,
+  "processing_sec": 1.25,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=0+asked=cash:6,eat:3,items_left:6,safe:5,screen:1"
+ },
+ "X-29": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 17.3,
+  "processing_sec": 0.93,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=0+asked=cash:6,eat:2,items_left:6,safe:1,screen:1"
+ },
+ "X-31": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 23.8,
+  "processing_sec": 1.24,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=0+asked=back:24,eat:2,safe:1"
+ },
+ "X-35": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 56.77,
+  "processing_sec": 8.0,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=6+asked=action3:1,cash:6,cash_hands:4,eat:1,pack:6,safe:2"
+ },
+ "X-37": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 15.87,
+  "processing_sec": 20.38,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=15+asked=cash:6,eat:1,pack:6,safe:2"
+ },
+ "X-39": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 78.73,
+  "processing_sec": 14.43,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=12+asked=cash:12,cash_hands:8,eat:2,pack:12,safe:3"
+ },
+ "X-43": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 23.37,
+  "processing_sec": 19.72,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=10+asked=eat:5,safe:5"
+ },
+ "X-45": {
+  "verdict": "no_violation",
+  "violations": [],
+  "duration_sec": 33.33,
+  "processing_sec": 17.79,
+  "engine": "rules+qwen3-vl-4b-instruct-mlx-4bit+vlm_calls=12+asked=eat:5,safe:7"
+ }
+}

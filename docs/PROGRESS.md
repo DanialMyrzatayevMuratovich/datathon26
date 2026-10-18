@@ -67,3 +67,4 @@
 - 03:59 · asylbek · Асылбек · test: finish local Gemma screens and guard reproducible state replay (R7) · тесты: pass
 - 04:04 · danial · Danial · T3 key left in lock by lock pixels (X-22), T2 second look for banded cash packs (X-38), X-2 to limitations; docs (R7) · тесты: pass
 - 04:36 · danial · Danial · T9 partial count: cashier alone never recounts by hand after the machine (X-44 found; 39/40 on cache); probes e13, e14 (R7) · тесты: FAIL
+- 05:13 · danial · Danial · 19 clean videos: 0 false alarms with all new rules (39/40 on cache); probes e15, e16 for T13 rejected (R7) · тесты: FAIL
